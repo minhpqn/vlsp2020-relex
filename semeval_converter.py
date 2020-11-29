@@ -17,8 +17,6 @@ if __name__ == "__main__":
     parser.add_argument("--output_dir", required=True, type=str)
     parser.add_argument("--max_distance", type=int, default=100,
                         help="Only consider entities whose distance is less than max_distance")
-    parser.add_argument("--sort_personal_social", action="store_true",
-                        help="Whether to sort entities of PERSONAL - SOCIAL")
     parser.add_argument("--use_posi_sen_only", action="store_true",
                         help="Whether to use sentences with at least one relation")
     args = parser.parse_args()
@@ -49,7 +47,7 @@ if __name__ == "__main__":
     
     samples = create_samples_from_sentences(sentences,
                                             max_distance=args.max_distance,
-                                            use_posi_sen_only=False,
+                                            use_posi_sen_only=args.use_posi_sen_only,
                                             is_train=is_train, has_label=has_label)
     labels = [s.label for s in samples]
     

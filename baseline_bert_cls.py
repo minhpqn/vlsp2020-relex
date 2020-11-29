@@ -29,6 +29,57 @@ def set_seed(seed=42):
     torch.manual_seed(seed)
 
 
+def evaluate(args, model, id2label, valid_dataset):
+    labels = [lb for lb in sorted(id2label.keys()) if id2label[lb] != 'OTHER']
+    
+    valid_sampler = SequentialSampler(valid_dataset)
+    valid_dataloader = DataLoader(valid_dataset, sampler=valid_sampler,
+                                  batch_size=args.eval_batch_size)
+
+    model.eval()
+    eval_loss = 0
+    nb_eval_steps = 0
+    predictions, true_labels = [], []
+
+    eval_epoch_iterator = tqdm(valid_dataloader, desc="Evaluation")
+    for batch in eval_epoch_iterator:
+        batch = tuple(t.to(args.device) for t in batch)
+        with torch.no_grad():
+            inputs = {
+                'input_ids': batch[0],
+                'attention_mask': batch[1],
+                'labels': batch[2]
+            }
+            b_labels = inputs['labels']
+            outputs = model(**inputs)
+            tmp_eval_loss, logits = outputs[:2]
+    
+        logits = logits.detach().cpu().numpy()
+        label_ids = b_labels.to('cpu').numpy()
+    
+        predictions.append(logits)
+        true_labels.append(label_ids)
+        nb_eval_steps += 1
+        eval_loss += tmp_eval_loss.item()
+
+    flat_predictions = [item for sublist in predictions for item in sublist]
+    flat_predictions = np.argmax(flat_predictions, axis=1).flatten()
+    flat_true_labels = [item for sublist in true_labels for item in sublist]
+
+    true_labels = [id2label[i] for i in flat_true_labels]
+    predictions = [id2label[i] for i in flat_predictions]
+
+    macro_f1 = metrics.f1_score(flat_true_labels, flat_predictions, labels=labels, average='macro')
+    micro_f1 = metrics.f1_score(flat_true_labels, flat_predictions, labels=labels, average='micro')
+    print(f"Validation loss: {eval_loss / nb_eval_steps}, "
+          f"Validation Accuracy: {metrics.accuracy_score(flat_true_labels, flat_predictions)}, "
+          f"Validation Macro F1: {macro_f1}, "
+          f"Validation Micro F1: {micro_f1}"
+          )
+    print("**** Classification Report ****")
+    print(metrics.classification_report(true_labels, predictions))
+    
+
 def train(args, model, tokenizer, id2label, train_dataset, valid_dataset=None):
     labels = [lb for lb in sorted(id2label.keys()) if id2label[lb] != 'OTHER']
     
@@ -134,7 +185,7 @@ def train(args, model, tokenizer, id2label, train_dataset, valid_dataset=None):
                   f"Validation Micro F1: {micro_f1}\n",
                   file=fo,
                   )
-        print("Saving model checkpoint to %s", output_dir)
+        print("Saving model checkpoint to %s" % output_dir)
 
 
 def prepare_data(samples, labels, tokenizer, maxlen=128):
@@ -172,7 +223,7 @@ if __name__ == "__main__":
         help="Path to id2label file"
     )
     parser.add_argument("--model_name_or_path", type=str, default="FPTAI/vibert-base-cased",
-                        help="Model name (roberta-base or roberta-large) or path to RoBERTa model")
+                        help="Model name or path to BERT model")
     parser.add_argument("--do_lower_case", action="store_true", help="Whether to lower case texts")
     parser.add_argument(
         "--train_batch_size",
@@ -262,5 +313,7 @@ if __name__ == "__main__":
     tokenizer.save_pretrained(args.output_dir)
     # Good practice: save your training arguments together with the trained model
     torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
+    
+    evaluate(args, model, valid_dataset)
 
 
