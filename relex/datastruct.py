@@ -6,6 +6,7 @@ Basic data structure
 import os
 import re
 import json
+import numpy as np
 
 
 possible_type_pairs = frozenset([
@@ -178,6 +179,8 @@ def create_samples_from_one_sentence(sentence, max_distance=100,
             e2 = entities[j]
             if j == i:
                 continue
+            if e1.text == e2.text:
+                continue
             if e1.nerType == 'PERSON' and e2.nerType == 'PERSON' and e2.start < e1.start:
                 continue
             
@@ -216,9 +219,27 @@ def create_sequence_with_markers(sample, e1_start_token='[E1]', e1_end_token='[/
     tokens = sample.tokenized_sentence.split(' ')
     e1_start, e1_end = sample.e1.start, sample.e1.end
     e2_start, e2_end = sample.e2.start, sample.e2.end
-    tokens.insert(e1_start, e1_start_token)
-    tokens.insert(e1_end + 2, e1_end_token)
-    tokens.insert(e2_start + 2, e2_start_token)
-    tokens.insert(e2_end + 4, e2_end_token)
-    
-    return ' '.join(tokens)
+
+    res = []
+    positions = [e1_start, e1_end + 1, e2_start, e2_end + 1]
+    symbols = [e1_start_token, e1_end_token, e2_start_token, e2_end_token]
+
+    if e2_start == e1_end + 1:
+        indexes = [0, 1, 2, 3]
+    elif e1_start == e2_end + 1:
+        indexes = [2, 3, 0, 1]
+    else:
+        indexes = np.argsort(positions)
+
+    for i in range(len(tokens)):
+        for j in range(len(indexes)):
+            if i == positions[indexes[j]]:
+                res.append(symbols[indexes[j]])
+        res.append(tokens[i])
+
+    if e1_end + 1 == len(tokens):
+        res.append(e1_end_token)
+    if e2_end + 1 == len(tokens):
+        res.append(e2_end_token)
+
+    return ' '.join(res)

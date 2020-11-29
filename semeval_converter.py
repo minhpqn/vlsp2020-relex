@@ -76,6 +76,6 @@ if __name__ == "__main__":
         print(f"{label2id[lb]}\t{sample.e1.start}\t{sample.e1.end}\t{sample.e2.start}\t"
               f"{sample.e2.end}\t{sample.e1.nerType}\t{sample.e2.nerType}\t{sample.tokenized_sentence}", file=f1)
         sen_with_marker = create_sequence_with_markers(sample)
-        print(f"{lb}\t{sample.e1.start+1}\t{sample.e1.end+1}\t{sample.e2.start+3}\t"
-              f"{sample.e2.end+3}\t{sample.e1.nerType}\t{sample.e2.nerType}\t{sen_with_marker}", file=f2)
+        print(f"{lb}\t{sample.e1.start}\t{sample.e1.end}\t{sample.e2.start}\t"
+              f"{sample.e2.end}\t{sample.e1.nerType}\t{sample.e2.nerType}\t{sample.e1.text}\t{sample.e2.text}\t{sen_with_marker}", file=f2)
     f1.close()

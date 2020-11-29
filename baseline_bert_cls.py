@@ -31,6 +31,7 @@ def set_seed(seed=42):
 
 def evaluate(args, model, id2label, valid_dataset):
     labels = [lb for lb in sorted(id2label.keys()) if id2label[lb] != 'OTHER']
+    text_labels = [id2label[lb] for lb in labels]
     
     valid_sampler = SequentialSampler(valid_dataset)
     valid_dataloader = DataLoader(valid_dataset, sampler=valid_sampler,
@@ -77,7 +78,7 @@ def evaluate(args, model, id2label, valid_dataset):
           f"Validation Micro F1: {micro_f1}"
           )
     print("**** Classification Report ****")
-    print(metrics.classification_report(true_labels, predictions))
+    print(metrics.classification_report(true_labels, predictions, labels=text_labels))
     
 
 def train(args, model, tokenizer, id2label, train_dataset, valid_dataset=None):
@@ -188,7 +189,7 @@ def train(args, model, tokenizer, id2label, train_dataset, valid_dataset=None):
         print("Saving model checkpoint to %s" % output_dir)
 
 
-def prepare_data(samples, labels, tokenizer, maxlen=128):
+def prepare_data(samples, labels, tokenizer, maxlen=256):
     sequences = [create_sequence_with_markers(s) for s in samples]
     print("** First sequence with markers:", sequences[0])
     encoded_rs = tokenizer.batch_encode_plus(sequences, return_tensors='pt',
