@@ -24,7 +24,7 @@ if __name__ == "__main__":
     
     valid_samples, valid_labels = load_relex_samples(args.eval_data_file)
     print("Validation label distribution:")
-    print(f"** Total training sample: {len(valid_samples)}")
+    print(f"** Total validation samples: {len(valid_samples)}")
     print("**", Counter(valid_labels))
     print()
     tokenizer = BertTokenizer.from_pretrained(args.model_path,

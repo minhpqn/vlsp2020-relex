@@ -162,7 +162,7 @@ def load_data_from_dir(data_dir):
 
 def create_samples_from_one_sentence(sentence, max_distance=100,
                                      use_posi_sen_only=False, has_label=True,
-                                     is_train=False):
+                                     is_train=False, keep_same_text=False):
     """Create samples from a single sentence
     """
     if use_posi_sen_only and len(sentence.relations) == 0:
@@ -179,7 +179,7 @@ def create_samples_from_one_sentence(sentence, max_distance=100,
             e2 = entities[j]
             if j == i:
                 continue
-            if e1.text == e2.text:
+            if e1.text == e2.text and not keep_same_text:
                 continue
             if e1.nerType == 'PERSON' and e2.nerType == 'PERSON' and e2.start < e1.start:
                 continue
@@ -199,7 +199,7 @@ def create_samples_from_one_sentence(sentence, max_distance=100,
 
 def create_samples_from_sentences(sentences, max_distance=100,
                                   use_posi_sen_only=False, has_label=True,
-                                  is_train=False):
+                                  is_train=False, keep_same_text=False):
     """Create samples from a list of sentences
     """
     samples = []
@@ -207,7 +207,7 @@ def create_samples_from_sentences(sentences, max_distance=100,
         tmp_samples = create_samples_from_one_sentence(sen, max_distance=max_distance,
                                                        use_posi_sen_only=use_posi_sen_only,
                                                        has_label=has_label,
-                                                       is_train=is_train)
+                                                       is_train=is_train, keep_same_text=keep_same_text)
         samples.extend(tmp_samples)
     return samples
 

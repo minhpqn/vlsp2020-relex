@@ -173,7 +173,7 @@ def train(args, model, tokenizer, id2label, train_dataset, valid_dataset=None):
               f"Validation Micro F1: {micro_f1}"
               )
         checkpoint_prefix = "checkpoint"
-        output_dir = os.path.join(args.output_dir, "{}-{}".format(checkpoint_prefix, epoch))
+        output_dir = os.path.join(args.output_dir, "{}-{}".format(checkpoint_prefix, epoch+1))
         os.makedirs(output_dir, exist_ok=True)
         model.save_pretrained(output_dir)
         tokenizer.save_pretrained(output_dir)
@@ -287,13 +287,13 @@ if __name__ == "__main__":
     num_labels = len(id2label)
     
     print("Train label distribution:")
-    print(f"** Total training sample: {len(train_samples)}")
+    print(f"** Total training samples: {len(train_samples)}")
     print("**", Counter(train_labels))
     print()
 
     valid_samples, valid_labels = load_relex_samples(args.eval_data_file)
     print("Validation label distribution:")
-    print(f"** Total training sample: {len(valid_samples)}")
+    print(f"** Total validation samples: {len(valid_samples)}")
     print("**", Counter(valid_labels))
     print()
     
@@ -315,6 +315,6 @@ if __name__ == "__main__":
     # Good practice: save your training arguments together with the trained model
     torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
     
-    evaluate(args, model, valid_dataset)
+    evaluate(args, model, id2label, valid_dataset)
 
 

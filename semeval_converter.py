@@ -19,6 +19,8 @@ if __name__ == "__main__":
                         help="Only consider entities whose distance is less than max_distance")
     parser.add_argument("--use_posi_sen_only", action="store_true",
                         help="Whether to use sentences with at least one relation")
+    parser.add_argument("--keep_same_text", action="store_true",
+                        help="Whether to keep entities with same texts")
     args = parser.parse_args()
     
     os.makedirs(args.output_dir, exist_ok=True)
@@ -48,7 +50,8 @@ if __name__ == "__main__":
     samples = create_samples_from_sentences(sentences,
                                             max_distance=args.max_distance,
                                             use_posi_sen_only=args.use_posi_sen_only,
-                                            is_train=is_train, has_label=has_label)
+                                            is_train=is_train, has_label=has_label,
+                                            keep_same_text=args.keep_same_text)
     labels = [s.label for s in samples]
     
     print(f"Number of samples: {len(samples)}")
