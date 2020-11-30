@@ -134,7 +134,6 @@ def train(args, model, tokenizer, id2label, train_dataset, valid_dataset=None):
         
         print("Epoch {}, Train loss: {}".format(epoch + 1, tr_loss / nb_tr_steps))
         
-        
         model.eval()
         eval_loss = 0
         nb_eval_steps = 0
