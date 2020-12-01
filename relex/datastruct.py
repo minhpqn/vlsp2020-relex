@@ -75,12 +75,6 @@ class Sentence:
         self.relations = relations
         self.relation_dict = {}
         self.dirname = dirname
-        
-        for rel in self.relations:
-            if rel['type'] == 'PERSONAL - SOCIAL' and rel['e2_start'] < rel['e1_start']:
-                self.relation_dict[(rel["e2_start"], rel["e2_end"], rel["e1_start"], rel["e1_end"])] = rel["type"]
-            else:
-                self.relation_dict[(rel["e1_start"], rel["e1_end"], rel["e2_start"], rel["e2_end"])] = rel["type"]
     
     def get_entities(self):
         """Get the list of named entities in the sentence
@@ -171,8 +165,16 @@ def create_samples_from_one_sentence(sentence, max_distance=100,
     if is_train and len(sentence.relations) > 50:
         return []
     
+    relation_dict = {}
+    for rel in sentence.relations:
+        if rel['type'] == 'PERSONAL - SOCIAL' and rel['e2_start'] < rel['e1_start']:
+            relation_dict[(rel["e2_start"], rel["e2_end"], rel["e1_start"], rel["e1_end"])] = rel["type"]
+        else:
+            relation_dict[(rel["e1_start"], rel["e1_end"], rel["e2_start"], rel["e2_end"])] = rel["type"]
+    
     samples = []
     entities = sentence.get_entities()
+    added_dict = {}
     for i in range(len(entities)):
         e1 = entities[i]
         for j in range(len(entities)):
@@ -183,16 +185,18 @@ def create_samples_from_one_sentence(sentence, max_distance=100,
                 continue
             if e1.nerType == 'PERSON' and e2.nerType == 'PERSON' and e2.start < e1.start:
                 continue
+
+            sample = Sample(sentence.text, e1, e2)
+            if abs(e1.start - e2.start) >= max_distance:
+                continue
+            if sample.key() in relation_dict:
+                label = relation_dict[sample.key()]
+                sample.label = label
             
-            if (e1.nerType, e2.nerType) in possible_type_pairs:
-                if abs(e1.start - e2.start) >= max_distance:
-                    continue
-                sample = Sample(sentence.text, e1, e2)
-                if has_label:
-                    if sample.key() in sentence.relation_dict:
-                        label = sentence.relation_dict[sample.key()]
-                        sample.label = label
+            if sample.label != 'OTHER' or (e1.nerType, e2.nerType) in possible_type_pairs \
+                    and sample.key() not in added_dict:
                 samples.append(sample)
+                added_dict[sample.key()] = 1
     
     return samples
 

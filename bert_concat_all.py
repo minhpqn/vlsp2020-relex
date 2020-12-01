@@ -1,7 +1,8 @@
 # coding=utf-8
 """
-Concatenate hidden states at E1-start and E2-start
+Concatenate [CLS] and two entity markers for finetuning BERT model
 """
+# coding=utf-8
 import os
 import argparse
 import random
@@ -55,10 +56,8 @@ class BertForRelationClassification(BertPreTrainedModel):
         self.num_labels = config.num_labels
         
         self.bert = BertModel(config)
-        self.pool_layer = PoolerLayer(config)
-        
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
-        self.classifier = nn.Linear(2 * config.hidden_size, self.config.num_labels)
+        self.classifier = nn.Linear(3 * config.hidden_size, self.config.num_labels)
         self.init_weights()
     
     def forward(self,
@@ -91,11 +90,10 @@ class BertForRelationClassification(BertPreTrainedModel):
             e1_token_tensor[i] = sequence_output[i, e1_ids[i]]
             e2_token_tensor[i] = sequence_output[i, e2_ids[i]]
         
-        e1_token_tensor = self.pool_layer(e1_token_tensor)
-        e2_token_tensor = self.pool_layer(e2_token_tensor)
+        pooled_output = outputs[1]
         
         # Concatenate e1_token_tensor and e2_token_tensor
-        pooled_output = torch.cat((e1_token_tensor, e2_token_tensor), 1)  # (batch_size, 2*hidden_size)
+        pooled_output = torch.cat((pooled_output, e1_token_tensor, e2_token_tensor), 1)  # (batch_size, 3*hidden_size)
         pooled_output = self.dropout(pooled_output)
         logits = self.classifier(pooled_output)
         
@@ -112,8 +110,8 @@ class BertForRelationClassification(BertPreTrainedModel):
             outputs = (loss,) + outputs
         
         return outputs  # (loss), logits, (hidden_states), (attentions)
-    
-    
+
+
 def prepare_data(samples, labels, tokenizer, e1_start_token='[E1]', e1_end_token='[/E1]',
                  e2_start_token='[E2]', e2_end_token='[/E2]', maxlen=256):
     sequences = [create_sequence_with_markers(s, e1_start_token, e1_end_token,
@@ -240,7 +238,7 @@ def train(args, model, tokenizer, id2label, train_dataset, validation_dataset):
         flat_predictions = [item for sublist in predictions for item in sublist]
         flat_predictions = np.argmax(flat_predictions, axis=1).flatten()
         flat_true_labels = [item for sublist in true_labels for item in sublist]
-
+        
         macro_f1 = metrics.f1_score(flat_true_labels, flat_predictions, labels=labels, average='macro')
         micro_f1 = metrics.f1_score(flat_true_labels, flat_predictions, labels=labels, average='micro')
         print(f"Epoch {epoch + 1}, Validation loss: {eval_loss / nb_eval_steps}, "
@@ -317,8 +315,8 @@ def evaluate(args, model, id2label, valid_dataset):
           )
     print("**** Classification Report ****")
     print(metrics.classification_report(true_labels, predictions, labels=text_labels))
-    
-    
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--output_dir", type=str, required=True, help="Path to model checkpoint")
@@ -415,10 +413,10 @@ if __name__ == "__main__":
     config = BertConfig.from_pretrained(args.model_name_or_path,
                                         num_labels=num_labels)
     tokenizer.add_tokens(['[E1]', '[/E1]', '[E2]', '[/E2]'])
-
+    
     train_dataset = prepare_data(train_samples, train_labels, tokenizer=tokenizer, maxlen=args.maxlen)
     valid_dataset = prepare_data(valid_samples, valid_labels, tokenizer=tokenizer, maxlen=args.maxlen)
-
+    
     model = BertForRelationClassification.from_pretrained(args.model_name_or_path, config=config)
     model.resize_token_embeddings(len(tokenizer))
     model.to(args.device)
