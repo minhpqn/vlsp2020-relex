@@ -187,17 +187,22 @@ def create_samples_from_one_sentence(sentence, max_distance=100,
                 continue
 
             sample = Sample(sentence.text, e1, e2)
-            if abs(e1.start - e2.start) >= max_distance:
-                continue
             if sample.key() in relation_dict:
                 label = relation_dict[sample.key()]
                 sample.label = label
             
-            if sample.label != 'OTHER' or (e1.nerType, e2.nerType) in possible_type_pairs \
-                    and sample.key() not in added_dict:
-                samples.append(sample)
-                added_dict[sample.key()] = 1
-    
+            if is_train:
+                if (e1.nerType, e2.nerType) in possible_type_pairs and (sample.label != 'OTHER' or abs(e1.start - e2.start) <= max_distance) \
+                        and sample.key() not in added_dict:
+                    samples.append(sample)
+                    added_dict[sample.key()] = 1
+            else:
+                if abs(e1.start - e2.start) > max_distance:
+                    continue
+                if (e1.nerType, e2.nerType) in possible_type_pairs and sample.key() not in added_dict:
+                    samples.append(sample)
+                    added_dict[sample.key()] = 1
+                
     return samples
 
 
