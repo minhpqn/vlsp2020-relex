@@ -1,0 +1,8 @@
+log*.txt
+tmp
+preprocessed_data
+models
+.ipynb_checkpoints
+.idea
+data/VLSP2020_RE_training_fixed
+/data/VLSP2020_RE_dev_fixed

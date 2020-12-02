@@ -155,7 +155,7 @@ def load_data_from_dir(data_dir):
 
 
 def create_samples_from_one_sentence(sentence, max_distance=100,
-                                     use_posi_sen_only=False, has_label=True,
+                                     use_posi_sen_only=False,
                                      is_train=False, keep_same_text=False):
     """Create samples from a single sentence
     """

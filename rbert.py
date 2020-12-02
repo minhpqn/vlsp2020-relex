@@ -1,6 +1,6 @@
 # coding=utf-8
 """
-Concatenate hidden states at E1-start and E2-start
+Implementation of R-BERT model
 """
 import os
 import argparse
@@ -26,52 +26,66 @@ from relex.datautils import load_relex_samples, load_id2label, create_sequence_w
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-class PoolerLayer(nn.Module):
+def entity_average(sequence_output, start_ids, end_ids, pooled_output):
+    batch_size, _, hidden_size = sequence_output.size()
+    
+    token_tensor = torch.zeros(batch_size, hidden_size, device=device)
+    
+    for i in range(start_ids.shape[0]):
+        if start_ids[i] == -1:
+            token_tensor[i] = pooled_output[i].squeeze(0)
+        else:
+            k = start_ids[i] + 1
+            m = end_ids[i] - 1
+            entity_length = m - k + 1
+            token_tensor[i] = torch.sum(sequence_output[i, k:m + 1]) / entity_length
+    
+    return token_tensor
+
+
+class FCLayer(nn.Module):
+    def __init__(self, input_dim, output_dim, dropout_rate=0.1, use_activation=True):
+        super(FCLayer, self).__init__()
+        self.use_activation = use_activation
+        self.dropout = nn.Dropout(dropout_rate)
+        self.linear = nn.Linear(input_dim, output_dim)
+        self.tanh = nn.Tanh()
+    
+    def forward(self, x):
+        x = self.dropout(x)
+        if self.use_activation:
+            x = self.tanh(x)
+        return self.linear(x)
+
+
+class RBERT(BertPreTrainedModel):
     
     def __init__(self, config):
-        super(PoolerLayer, self).__init__()
-        self.dense = nn.Linear(config.hidden_size, config.hidden_size)
-        self.activation = nn.Tanh()
-    
-    def forward(self, token_tensor):
-        """
-
-        Args:
-            hidden_states (torch.FloatTensor): last hidden states of BERT for tokens
-                                               size = (batch_size, hidden_size)
-        Returns:
-            pooled_output: Pool outputs
-                           shape = (batch_size, hidden_size)
-        """
-        pooled_output = self.dense(token_tensor)
-        pooled_output = self.activation(pooled_output)
-        return pooled_output
-
-
-class BertForRelationClassification(BertPreTrainedModel):
-    
-    def __init__(self, config):
-        super(BertForRelationClassification, self).__init__(config)
+        super(RBERT, self).__init__(config)
         self.num_labels = config.num_labels
         
         self.bert = BertModel(config)
-        self.pool_layer = PoolerLayer(config)
+        
+        self.cls_fc_layer = FCLayer(config.hidden_size, config.hidden_size)
+        self.e_fc_layer = FCLayer(config.hidden_size, config.hidden_size)
         
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
-        self.classifier = nn.Linear(2 * config.hidden_size, self.config.num_labels)
+        self.classifier = nn.Linear(3 * config.hidden_size, self.config.num_labels)
         self.init_weights()
-    
+
     def forward(self,
                 input_ids=None,
                 attention_mask=None,
                 token_type_ids=None,
-                e1_ids=None,
-                e2_ids=None,
+                e1_start_ids=None,
+                e1_end_ids=None,
+                e2_start_ids=None,
+                e2_end_ids=None,
                 position_ids=None,
                 head_mask=None,
                 inputs_embeds=None,
                 labels=None):
-        
+    
         outputs = self.bert(
             input_ids,
             attention_mask=attention_mask,
@@ -81,26 +95,23 @@ class BertForRelationClassification(BertPreTrainedModel):
             inputs_embeds=inputs_embeds,
         )
         sequence_output = outputs[0]  # last hidden states of BERT for each token
-        batch_size, _, hidden_size = sequence_output.size()
-        
-        # Put e1_token_tensor and e2_token_tensor to cuda if available
-        e1_token_tensor = torch.zeros(batch_size, hidden_size, device=device)
-        e2_token_tensor = torch.zeros(batch_size, hidden_size, device=device)
-        
-        for i in range(e1_ids.shape[0]):
-            e1_token_tensor[i] = sequence_output[i, e1_ids[i]]
-            e2_token_tensor[i] = sequence_output[i, e2_ids[i]]
-        
-        e1_token_tensor = self.pool_layer(e1_token_tensor)
-        e2_token_tensor = self.pool_layer(e2_token_tensor)
-        
+        pooled_output = outputs[1]
+    
+        # Average of tokens between [E1] and [/E1]
+        e1_h = entity_average(sequence_output, e1_start_ids, e1_end_ids, pooled_output)
+        e2_h = entity_average(sequence_output, e2_start_ids, e2_end_ids, pooled_output)
+    
+        pooled_output = self.cls_fc_layer(pooled_output)
+        e1_h = self.e_fc_layer(e1_h)
+        e2_h = self.e_fc_layer(e2_h)
+    
         # Concatenate e1_token_tensor and e2_token_tensor
-        pooled_output = torch.cat((e1_token_tensor, e2_token_tensor), 1)  # (batch_size, 2*hidden_size)
-        pooled_output = self.dropout(pooled_output)
-        logits = self.classifier(pooled_output)
-        
+        concat_h = torch.cat((pooled_output, e1_h, e2_h), 1)  # (batch_size, 3*hidden_size)
+        concat_h = self.dropout(concat_h)
+        logits = self.classifier(concat_h)
+    
         outputs = (logits,) + outputs[2:]  # add hidden states and attention if they are here
-        
+    
         if labels is not None:
             if self.num_labels == 1:
                 #  We are doing regression
@@ -110,10 +121,10 @@ class BertForRelationClassification(BertPreTrainedModel):
                 loss_fct = CrossEntropyLoss()
                 loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
             outputs = (loss,) + outputs
-        
+    
         return outputs  # (loss), logits, (hidden_states), (attentions)
-    
-    
+
+
 def prepare_data(samples, labels, tokenizer, e1_start_token='[E1]', e1_end_token='[/E1]',
                  e2_start_token='[E2]', e2_end_token='[/E2]', maxlen=256):
     sequences = [create_sequence_with_markers(s, e1_start_token, e1_end_token,
@@ -128,15 +139,20 @@ def prepare_data(samples, labels, tokenizer, e1_start_token='[E1]', e1_end_token
     labels = torch.LongTensor(labels)
     
     # Calculate the start indexes of e1 and e2 entities
-    e1_marker_idx, e2_marker_idx = tokenizer.convert_tokens_to_ids([e1_start_token, e2_start_token])
+    e1_start_marker_idx, e1_end_marker_idx, e2_start_marker_idx, e2_end_marker_idx = \
+        tokenizer.convert_tokens_to_ids([e1_start_token, e1_end_token, e2_start_token, e2_end_token])
     
-    e1_ids = [np.where(ids.numpy() == e1_marker_idx)[0][0] for ids in input_ids]
-    e2_ids = [np.where(ids.numpy() == e2_marker_idx)[0][0] for ids in input_ids]
+    e1_start_ids = [np.where(ids.numpy() == e1_start_marker_idx)[0][0] for ids in input_ids]
+    e1_end_ids = [np.where(ids.numpy() == e1_end_marker_idx)[0][0] for ids in input_ids]
+    e2_start_ids = [np.where(ids.numpy() == e2_start_marker_idx)[0][0] for ids in input_ids]
+    e2_end_ids = [np.where(ids.numpy() == e2_end_marker_idx)[0][0] for ids in input_ids]
     
-    e1_ids = torch.LongTensor(e1_ids)
-    e2_ids = torch.LongTensor(e2_ids)
+    e1_start_ids = torch.LongTensor(e1_start_ids)
+    e1_end_ids = torch.LongTensor(e1_end_ids)
+    e2_start_ids = torch.LongTensor(e2_start_ids)
+    e2_end_ids = torch.LongTensor(e2_end_ids)
     
-    dataset = TensorDataset(input_ids, e1_ids, e2_ids, attention_mask, labels)
+    dataset = TensorDataset(input_ids, e1_start_ids, e1_end_ids, e2_start_ids, e2_end_ids, attention_mask, labels)
     
     return dataset
 
@@ -145,8 +161,8 @@ def set_seed(seed=42):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
-
-
+    
+    
 def train(args, model, tokenizer, id2label, train_dataset, validation_dataset):
     labels = [lb for lb in sorted(id2label.keys()) if id2label[lb] != 'OTHER']
     
@@ -184,10 +200,12 @@ def train(args, model, tokenizer, id2label, train_dataset, validation_dataset):
             # Add batch to GPU
             batch = tuple(t.to(args.device) for t in batch)
             inputs = {'input_ids': batch[0],
-                      'e1_ids': batch[1],
-                      'e2_ids': batch[2],
-                      'attention_mask': batch[3],
-                      'labels': batch[4]}
+                      'e1_start_ids': batch[1],
+                      'e1_end_ids': batch[2],
+                      'e2_start_ids': batch[3],
+                      'e2_end_ids': batch[4],
+                      'attention_mask': batch[5],
+                      'labels': batch[6]}
             # Clear out the gradients (by default they accumulate)
             optimizer.zero_grad()
             
@@ -218,10 +236,12 @@ def train(args, model, tokenizer, id2label, train_dataset, validation_dataset):
             # Telling the model not to compute or store gradients, saving memory and speeding up validation
             with torch.no_grad():
                 inputs = {'input_ids': batch[0],
-                          'e1_ids': batch[1],
-                          'e2_ids': batch[2],
-                          'attention_mask': batch[3],
-                          'labels': batch[4]}
+                          'e1_start_ids': batch[1],
+                          'e1_end_ids': batch[2],
+                          'e2_start_ids': batch[3],
+                          'e2_end_ids': batch[4],
+                          'attention_mask': batch[5],
+                          'labels': batch[6]}
                 b_labels = inputs['labels']
                 # Forward pass, calculate logit predictions
                 outputs = model(**inputs)
@@ -240,7 +260,7 @@ def train(args, model, tokenizer, id2label, train_dataset, validation_dataset):
         flat_predictions = [item for sublist in predictions for item in sublist]
         flat_predictions = np.argmax(flat_predictions, axis=1).flatten()
         flat_true_labels = [item for sublist in true_labels for item in sublist]
-
+        
         macro_f1 = metrics.f1_score(flat_true_labels, flat_predictions, labels=labels, average='macro')
         micro_f1 = metrics.f1_score(flat_true_labels, flat_predictions, labels=labels, average='micro')
         print(f"Epoch {epoch + 1}, Validation loss: {eval_loss / nb_eval_steps}, "
@@ -250,7 +270,7 @@ def train(args, model, tokenizer, id2label, train_dataset, validation_dataset):
               )
         checkpoint_prefix = "checkpoint"
         output_dir = os.path.join(args.output_dir, "{}-{}_{:.3f}_{:.3f}".format(checkpoint_prefix,
-                                                                               epoch + 1, macro_f1, micro_f1))
+                                                                                epoch + 1, macro_f1, micro_f1))
         os.makedirs(output_dir, exist_ok=True)
         model.save_pretrained(output_dir)
         tokenizer.save_pretrained(output_dir)
@@ -285,11 +305,12 @@ def evaluate(args, model, id2label, valid_dataset):
         batch = tuple(t.to(args.device) for t in batch)
         with torch.no_grad():
             inputs = {'input_ids': batch[0],
-                      'e1_ids': batch[1],
-                      'e2_ids': batch[2],
-                      'attention_mask': batch[3],
-                      'labels': batch[4]
-                      }
+                      'e1_start_ids': batch[1],
+                      'e1_end_ids': batch[2],
+                      'e2_start_ids': batch[3],
+                      'e2_end_ids': batch[4],
+                      'attention_mask': batch[5],
+                      'labels': batch[6]}
             b_labels = inputs['labels']
             outputs = model(**inputs)
             tmp_eval_loss, logits = outputs[:2]
@@ -318,8 +339,7 @@ def evaluate(args, model, id2label, valid_dataset):
           )
     print("**** Classification Report ****")
     print(metrics.classification_report(true_labels, predictions, labels=text_labels))
-    
-    
+        
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--output_dir", type=str, required=True, help="Path to model checkpoint")
@@ -410,7 +430,7 @@ if __name__ == "__main__":
     print(f"** Total training sample: {len(valid_samples)}")
     print("**", Counter(valid_labels))
     print()
-    
+
     tokenizer = BertTokenizer.from_pretrained(args.model_name_or_path,
                                               do_lower_case=args.do_lower_case)
     config = BertConfig.from_pretrained(args.model_name_or_path,
@@ -420,15 +440,14 @@ if __name__ == "__main__":
     train_dataset = prepare_data(train_samples, train_labels, tokenizer=tokenizer, maxlen=args.maxlen)
     valid_dataset = prepare_data(valid_samples, valid_labels, tokenizer=tokenizer, maxlen=args.maxlen)
 
-    model = BertForRelationClassification.from_pretrained(args.model_name_or_path, config=config)
+    model = RBERT.from_pretrained(args.model_name_or_path, config=config)
     model.resize_token_embeddings(len(tokenizer))
     model.to(args.device)
-    
+
     train(args, model, tokenizer, id2label, train_dataset, valid_dataset)
     model.save_pretrained(args.output_dir)
     tokenizer.save_pretrained(args.output_dir)
     # Good practice: save your training arguments together with the trained model
     torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
-    
-    evaluate(args, model, id2label, valid_dataset)
 
+    evaluate(args, model, id2label, valid_dataset)

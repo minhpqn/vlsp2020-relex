@@ -247,7 +247,7 @@ def train(args, model, tokenizer, id2label, train_dataset, validation_dataset):
               f"Validation Micro F1: {micro_f1}"
               )
         checkpoint_prefix = "checkpoint"
-        output_dir = os.path.join(args.output_dir, "{}-{}_{:.3f}_{:3f}".format(checkpoint_prefix,
+        output_dir = os.path.join(args.output_dir, "{}-{}_{:.3f}_{:.3f}".format(checkpoint_prefix,
                                                                                epoch + 1, macro_f1, micro_f1))
         os.makedirs(output_dir, exist_ok=True)
         model.save_pretrained(output_dir)

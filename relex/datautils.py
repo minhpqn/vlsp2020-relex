@@ -8,12 +8,14 @@ import unittest
 
 class RelexSample:
     
-    def __init__(self, sentence, e1_start, e1_end, e2_start, e2_end):
+    def __init__(self, sentence, e1_start, e1_end, e2_start, e2_end, e1_type, e2_type):
         self.sentence = sentence
         self.e1_start = e1_start
         self.e1_end = e1_end
         self.e2_start = e2_start
         self.e2_end = e2_end
+        self.e1_type = e1_type
+        self.e2_type = e2_type
 
 
 def create_sequence_with_markers(sample, e1_start_token='[E1]', e1_end_token='[/E1]',
@@ -61,7 +63,8 @@ def load_relex_samples(file_path):
                 continue
             fields = line.split("\t")
             lb = int(fields[0])
-            sample = RelexSample(fields[7], int(fields[1]), int(fields[2]), int(fields[3]), int(fields[4]))
+            sample = RelexSample(fields[7], int(fields[1]), int(fields[2]),
+                                 int(fields[3]), int(fields[4]), fields[6], fields[6])
             samples.append(sample)
             labels.append(lb)
     return samples, labels
