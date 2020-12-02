@@ -365,7 +365,7 @@ def evaluate(args, model, id2label, valid_dataset):
           f"Validation Micro F1: {micro_f1}"
           )
     print("**** Classification Report ****")
-    print(metrics.classification_report(true_labels, predictions, labels=text_labels))
+    print(metrics.classification_report(true_labels, predictions, labels=text_labels, digits=4))
     
     
 if __name__ == "__main__":

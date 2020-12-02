@@ -1,14 +1,15 @@
 # coding=utf-8
 """
-Evaluate baseline BERT + CLS
+Evaluate R-BERT model on run_rbert.py
 """
 import os
 import argparse
 from collections import Counter
 import torch
+from transformers import BertTokenizer
 from relex.datautils import load_relex_samples, load_id2label
-from baseline_bert_cls import evaluate, prepare_data
-from transformers import BertTokenizer, BertForSequenceClassification
+from run_rbert import RBERT, prepare_data, evaluate
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -30,7 +31,7 @@ if __name__ == "__main__":
     tokenizer = BertTokenizer.from_pretrained(args.model_path,
                                               do_lower_case=training_args.do_lower_case)
     valid_dataset = prepare_data(valid_samples, valid_labels, tokenizer=tokenizer, maxlen=training_args.maxlen)
-    model = BertForSequenceClassification.from_pretrained(args.model_path)
+    model = RBERT.from_pretrained(args.model_path)
     model = model.to(training_args.device)
     id2label = load_id2label(training_args.id2label)
     evaluate(training_args, model, id2label, valid_dataset)
