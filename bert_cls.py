@@ -331,6 +331,7 @@ if __name__ == "__main__":
         help="Save checkpoint every X updates steps.",
     )
     parser.add_argument("--no_cuda", action="store_true", help="Avoid using CUDA when available")
+    parser.add_argument("--print_report", action="store_true", help="Whether to print classification report.")
     args = parser.parse_args()
 
     args.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
