@@ -6,8 +6,6 @@ Current code is based on HuggingFace transformers version 2.11.0
 """
 import os
 import argparse
-import random
-from collections import Counter
 import logging
 import numpy as np
 from tqdm.auto import tqdm, trange
@@ -30,15 +28,14 @@ logger = logging.getLogger(__name__)
 
 def evaluate(args, model, id2label, valid_dataset):
     labels = [lb for lb in sorted(id2label.keys()) if id2label[lb] != 'OTHER']
-    text_labels = [id2label[lb] for lb in labels]
 
     eval_sampler = SequentialSampler(valid_dataset)
     eval_dataloader = DataLoader(valid_dataset, sampler=eval_sampler, batch_size=args.eval_batch_size)
 
     # Eval!
     logger.info("***** Running evaluation on validation dataset *****")
-    logger.info("  Num examples = %d", len(dataset))
-    logger.info("  Batch size = %d", self.args.eval_batch_size)
+    logger.info("  Num examples = %d", len(valid_dataset))
+    logger.info("  Batch size = %d", args.eval_batch_size)
     eval_loss = 0.0
     nb_eval_steps = 0
     preds = None
