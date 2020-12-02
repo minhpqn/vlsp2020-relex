@@ -195,12 +195,13 @@ def train(args, model, tokenizer, id2label, train_dataset, valid_dataset=None):
 def save_model(args, model, tokenizer):
     model_to_save = model.module if hasattr(model, "module") else model
     model_to_save.save_pretrained(args.output_dir)
-    tokenizer.save_pretraiend(args.output_dir)
+    tokenizer.save_pretrained(args.output_dir)
     # Save training arguments together with the trained model
     torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
     logger.info("Saving model checkpoint to %s", args.output_dir)
 
-def prepare_data(samples, labels, tokenizer, maxlen=256):
+
+def prepare_data(samples, labels, tokenizer, maxlen=384):
     sequences = [create_sequence_with_markers(s) for s in samples]
     logger.info("** First sequence with markers: {}".format(sequences[0]))
     encoded_rs = tokenizer.batch_encode_plus(sequences, return_tensors='pt',
