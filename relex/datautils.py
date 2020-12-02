@@ -51,7 +51,7 @@ def create_sequence_with_markers(sample, e1_start_token='[E1]', e1_end_token='[/
     return ' '.join(res)
 
 
-def load_relex_samples(file_path):
+def load_relex_samples(file_path, do_lower_case=False):
     """Loading list of RelexSamples from data in SemEval 2010 format
     """
     samples = []
@@ -63,7 +63,10 @@ def load_relex_samples(file_path):
                 continue
             fields = line.split("\t")
             lb = int(fields[0])
-            sample = RelexSample(fields[7], int(fields[1]), int(fields[2]),
+            sentence = fields[7]
+            if do_lower_case:
+                sentence = sentence.lower()
+            sample = RelexSample(sentence, int(fields[1]), int(fields[2]),
                                  int(fields[3]), int(fields[4]), fields[6], fields[6])
             samples.append(sample)
             labels.append(lb)

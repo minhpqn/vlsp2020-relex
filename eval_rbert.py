@@ -31,7 +31,7 @@ if __name__ == "__main__":
     tokenizer = BertTokenizer.from_pretrained(args.model_path,
                                               do_lower_case=training_args.do_lower_case)
     valid_dataset = prepare_data(valid_samples, valid_labels, tokenizer=tokenizer, maxlen=training_args.maxlen)
-    model = RBERT.from_pretrained(args.model_path)
+    model = RBERT.from_pretrained(args.model_path, dropout_rate=0.1)
     model = model.to(training_args.device)
     id2label = load_id2label(training_args.id2label)
     evaluate(training_args, model, id2label, valid_dataset)

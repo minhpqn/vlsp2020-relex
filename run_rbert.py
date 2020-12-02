@@ -442,15 +442,11 @@ if __name__ == "__main__":
         help="Training epochs"
     )
     args = parser.parse_args()
-    if args.model_name_or_path in ["FPTAI/vibert-base-cased", "bert-base-multilingual-cased",
-                                   "NlpHUST/vibert4news-base-cased"]:
-        args.do_lower_case = False
-    
     args.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(args)
     os.makedirs(args.output_dir, exist_ok=True)
     
-    train_samples, train_labels = load_relex_samples(args.train_data_file)
+    train_samples, train_labels = load_relex_samples(args.train_data_file, do_lower_case=args.do_lower_case)
     id2label = load_id2label(args.id2label)
     num_labels = len(id2label)
     
@@ -466,7 +462,7 @@ if __name__ == "__main__":
     print()
 
     tokenizer = BertTokenizer.from_pretrained(args.model_name_or_path,
-                                              do_lower_case=args.do_lower_case)
+                                              do_lower_case=False)
     config = BertConfig.from_pretrained(args.model_name_or_path,
                                         num_labels=num_labels)
     tokenizer.add_tokens(['[E1]', '[/E1]', '[E2]', '[/E2]'])
