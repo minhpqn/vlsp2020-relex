@@ -202,7 +202,7 @@ def create_examples_from_relex_samples(samples, labels):
 def load_and_cache_examples(args, tokenizer, mode):
     if mode == "train":
         input_file = args.train_data_file
-    elif mode == "test":
+    elif mode in ["dev", "test"]:
         input_file = args.eval_data_file
     else:
         raise ValueError("Invalid mode: {}".format(mode))
@@ -216,9 +216,9 @@ def load_and_cache_examples(args, tokenizer, mode):
         logger.info("Loading features from cached file %s", cached_features_file)
         features = torch.load(cached_features_file)
     else:
-        logger.info("Creating features from dataset file at %s", args.train_data_file)
+        logger.info("Creating features from dataset file at %s", input_file)
         
-        samples, labels = load_relex_samples(args.train_data_file)
+        samples, labels = load_relex_samples(input_file)
         examples = create_examples_from_relex_samples(samples, labels)
         
         features = convert_examples_to_features(
