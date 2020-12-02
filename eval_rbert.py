@@ -23,7 +23,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     training_args = torch.load(os.path.join(args.model_path, "training_args.bin"))
     
-    valid_samples, valid_labels = load_relex_samples(args.eval_data_file)
+    valid_samples, valid_labels = load_relex_samples(args.eval_data_file, training_args.do_lower_case)
     print("Validation label distribution:")
     print(f"** Total validation samples: {len(valid_samples)}")
     print("**", Counter(valid_labels))

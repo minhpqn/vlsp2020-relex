@@ -455,7 +455,7 @@ if __name__ == "__main__":
     print("**", Counter(train_labels))
     print()
     
-    valid_samples, valid_labels = load_relex_samples(args.eval_data_file)
+    valid_samples, valid_labels = load_relex_samples(args.eval_data_file, do_lower_case=args.do_lower_case)
     print("Validation label distribution:")
     print(f"** Total training sample: {len(valid_samples)}")
     print("**", Counter(valid_labels))
