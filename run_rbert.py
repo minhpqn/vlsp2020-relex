@@ -44,7 +44,7 @@ def entity_average(sequence_output, start_ids, end_ids, pooled_output):
 
 
 class FCLayer(nn.Module):
-    def __init__(self, input_dim, output_dim, dropout_rate=0.1, use_activation=True):
+    def __init__(self, input_dim, output_dim, dropout_rate=0.0, use_activation=True):
         super(FCLayer, self).__init__()
         self.use_activation = use_activation
         self.dropout = nn.Dropout(dropout_rate)
@@ -60,27 +60,47 @@ class FCLayer(nn.Module):
 
 class RBERT(BertPreTrainedModel):
     
-    def __init__(self, config):
+    def __init__(self, config, dropout_rate):
         super(RBERT, self).__init__(config)
         self.num_labels = config.num_labels
         
         self.bert = BertModel(config)
         
         self.cls_fc_layer = FCLayer(config.hidden_size, config.hidden_size)
-        self.e_fc_layer = FCLayer(config.hidden_size, config.hidden_size)
+        self.entity_fc_layer = FCLayer(config.hidden_size, config.hidden_size, dropout_rate)
         
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
-        self.classifier = nn.Linear(3 * config.hidden_size, self.config.num_labels)
+        self.label_classifier = FCLayer(
+            config.hidden_size * 3,
+            config.num_labels,
+            dropout_rate,
+            use_activation=False,
+        )
         self.init_weights()
 
+    @staticmethod
+    def entity_average(hidden_output, e_mask):
+        """
+        Average the entity hidden state vectors (H_i ~ H_j)
+        :param hidden_output: [batch_size, j-i+1, dim]
+        :param e_mask: [batch_size, max_seq_len]
+                e.g. e_mask[0] == [0, 0, 0, 1, 1, 1, 0, 0, ... 0]
+        :return: [batch_size, dim]
+        """
+        e_mask_unsqueeze = e_mask.unsqueeze(1)  # [b, 1, j-i+1]
+        length_tensor = (e_mask != 0).sum(dim=1).unsqueeze(1)  # [batch_size, 1]
+    
+        # [b, 1, j-i+1] * [b, j-i+1, dim] = [b, 1, dim] -> [b, dim]
+        sum_vector = torch.bmm(e_mask_unsqueeze.float(), hidden_output).squeeze(1)
+        avg_vector = sum_vector.float() / length_tensor.float()  # broadcasting
+        return avg_vector
+    
     def forward(self,
                 input_ids=None,
                 attention_mask=None,
                 token_type_ids=None,
-                e1_start_ids=None,
-                e1_end_ids=None,
-                e2_start_ids=None,
-                e2_end_ids=None,
+                e1_mask=None,
+                e2_mask=None,
                 position_ids=None,
                 head_mask=None,
                 inputs_embeds=None,
@@ -98,17 +118,17 @@ class RBERT(BertPreTrainedModel):
         pooled_output = outputs[1]
     
         # Average of tokens between [E1] and [/E1]
-        e1_h = entity_average(sequence_output, e1_start_ids, e1_end_ids, pooled_output)
-        e2_h = entity_average(sequence_output, e2_start_ids, e2_end_ids, pooled_output)
-    
+        e1_h = self.entity_average(sequence_output, e1_mask)
+        e2_h = self.entity_average(sequence_output, e2_mask)
+
+        # Dropout -> tanh -> fc_layer (Share FC layer for e1 and e2)
         pooled_output = self.cls_fc_layer(pooled_output)
-        e1_h = self.e_fc_layer(e1_h)
-        e2_h = self.e_fc_layer(e2_h)
-    
-        # Concatenate e1_token_tensor and e2_token_tensor
-        concat_h = torch.cat((pooled_output, e1_h, e2_h), 1)  # (batch_size, 3*hidden_size)
-        concat_h = self.dropout(concat_h)
-        logits = self.classifier(concat_h)
+        e1_h = self.entity_fc_layer(e1_h)
+        e2_h = self.entity_fc_layer(e2_h)
+
+        # Concat -> fc_layer
+        concat_h = torch.cat([pooled_output, e1_h, e2_h], dim=-1)
+        logits = self.label_classifier(concat_h)
     
         outputs = (logits,) + outputs[2:]  # add hidden states and attention if they are here
     
@@ -134,25 +154,38 @@ def prepare_data(samples, labels, tokenizer, e1_start_token='[E1]', e1_end_token
                                              padding=True,
                                              pad_to_max_length=True,
                                              max_length=maxlen)
-    input_ids = encoded_rs["input_ids"]
-    attention_mask = encoded_rs["attention_mask"]
-    labels = torch.LongTensor(labels)
+    all_input_ids = encoded_rs["input_ids"]
+    all_attention_mask = encoded_rs["attention_mask"]
+    all_labels = torch.LongTensor(labels)
     
     # Calculate the start indexes of e1 and e2 entities
     e1_start_marker_idx, e1_end_marker_idx, e2_start_marker_idx, e2_end_marker_idx = \
         tokenizer.convert_tokens_to_ids([e1_start_token, e1_end_token, e2_start_token, e2_end_token])
     
-    e1_start_ids = [np.where(ids.numpy() == e1_start_marker_idx)[0][0] for ids in input_ids]
-    e1_end_ids = [np.where(ids.numpy() == e1_end_marker_idx)[0][0] for ids in input_ids]
-    e2_start_ids = [np.where(ids.numpy() == e2_start_marker_idx)[0][0] for ids in input_ids]
-    e2_end_ids = [np.where(ids.numpy() == e2_end_marker_idx)[0][0] for ids in input_ids]
+    all_e1_mask = []
+    all_e2_mask = []
     
-    e1_start_ids = torch.LongTensor(e1_start_ids)
-    e1_end_ids = torch.LongTensor(e1_end_ids)
-    e2_start_ids = torch.LongTensor(e2_start_ids)
-    e2_end_ids = torch.LongTensor(e2_end_ids)
+    for input_ids in all_input_ids:
+        input_ids = input_ids.numpy().tolist()
+        e1_start_id = input_ids.index(e1_start_marker_idx)
+        e1_end_id = input_ids.index(e1_end_marker_idx)
+        e2_start_id = input_ids.index(e2_start_marker_idx)
+        e2_end_id = input_ids.index(e2_end_marker_idx)
+        
+        e1_mask = [0] * len(input_ids)
+        e2_mask = [0] * len(input_ids)
+        for i in range(e1_start_id, e1_end_id + 1):
+            e1_mask[i] = 1
+        for i in range(e2_start_id, e2_end_id + 1):
+            e2_mask[i] = 1
+        
+        all_e1_mask.append(e1_mask)
+        all_e2_mask.append(e2_mask)
     
-    dataset = TensorDataset(input_ids, e1_start_ids, e1_end_ids, e2_start_ids, e2_end_ids, attention_mask, labels)
+    all_e1_mask = torch.LongTensor(all_e1_mask)
+    all_e2_mask = torch.LongTensor(all_e2_mask)
+    
+    dataset = TensorDataset(all_input_ids, all_e1_mask, all_e2_mask, all_attention_mask, all_labels)
     
     return dataset
 
@@ -200,12 +233,10 @@ def train(args, model, tokenizer, id2label, train_dataset, validation_dataset):
             # Add batch to GPU
             batch = tuple(t.to(args.device) for t in batch)
             inputs = {'input_ids': batch[0],
-                      'e1_start_ids': batch[1],
-                      'e1_end_ids': batch[2],
-                      'e2_start_ids': batch[3],
-                      'e2_end_ids': batch[4],
-                      'attention_mask': batch[5],
-                      'labels': batch[6]}
+                      'e1_mask': batch[1],
+                      'e2_mask': batch[2],
+                      'attention_mask': batch[3],
+                      'labels': batch[4]}
             # Clear out the gradients (by default they accumulate)
             optimizer.zero_grad()
             
@@ -236,12 +267,10 @@ def train(args, model, tokenizer, id2label, train_dataset, validation_dataset):
             # Telling the model not to compute or store gradients, saving memory and speeding up validation
             with torch.no_grad():
                 inputs = {'input_ids': batch[0],
-                          'e1_start_ids': batch[1],
-                          'e1_end_ids': batch[2],
-                          'e2_start_ids': batch[3],
-                          'e2_end_ids': batch[4],
-                          'attention_mask': batch[5],
-                          'labels': batch[6]}
+                          'e1_mask': batch[1],
+                          'e2_mask': batch[2],
+                          'attention_mask': batch[3],
+                          'labels': batch[4]}
                 b_labels = inputs['labels']
                 # Forward pass, calculate logit predictions
                 outputs = model(**inputs)
@@ -305,12 +334,10 @@ def evaluate(args, model, id2label, valid_dataset):
         batch = tuple(t.to(args.device) for t in batch)
         with torch.no_grad():
             inputs = {'input_ids': batch[0],
-                      'e1_start_ids': batch[1],
-                      'e1_end_ids': batch[2],
-                      'e2_start_ids': batch[3],
-                      'e2_end_ids': batch[4],
-                      'attention_mask': batch[5],
-                      'labels': batch[6]}
+                      'e1_mask': batch[1],
+                      'e2_mask': batch[2],
+                      'attention_mask': batch[3],
+                      'labels': batch[4]}
             b_labels = inputs['labels']
             outputs = model(**inputs)
             tmp_eval_loss, logits = outputs[:2]
@@ -339,7 +366,8 @@ def evaluate(args, model, id2label, valid_dataset):
           )
     print("**** Classification Report ****")
     print(metrics.classification_report(true_labels, predictions, labels=text_labels))
-        
+    
+    
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--output_dir", type=str, required=True, help="Path to model checkpoint")
@@ -364,6 +392,12 @@ if __name__ == "__main__":
         type=int,
         default=16,
         help="Training batch size"
+    )
+    parser.add_argument(
+        "--dropout_rate",
+        default=0.1,
+        type=float,
+        help="Dropout for fully-connected layers",
     )
     parser.add_argument(
         "--eval_batch_size",
@@ -440,7 +474,7 @@ if __name__ == "__main__":
     train_dataset = prepare_data(train_samples, train_labels, tokenizer=tokenizer, maxlen=args.maxlen)
     valid_dataset = prepare_data(valid_samples, valid_labels, tokenizer=tokenizer, maxlen=args.maxlen)
 
-    model = RBERT.from_pretrained(args.model_name_or_path, config=config)
+    model = RBERT.from_pretrained(args.model_name_or_path, config=config, dropout_rate=args.dropout_rate)
     model.resize_token_embeddings(len(tokenizer))
     model.to(args.device)
 
