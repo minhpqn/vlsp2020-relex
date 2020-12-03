@@ -9,6 +9,17 @@ import json
 import numpy as np
 
 
+def is_all_punct(text):
+    """Check if a text contains only punctuations
+    """
+    filters = frozenset([c for c in '!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\t\n '])
+    b = False
+    _tk = [c for c in text if c not in filters]
+    if len(_tk) == 0:
+        b = True
+    return b
+
+
 possible_type_pairs = frozenset([
     # LOCATED
     ("PERSON", "LOCATION"),
@@ -185,6 +196,8 @@ def create_samples_from_one_sentence(sentence, max_distance=100,
                 continue
             if e1.nerType == 'PERSON' and e2.nerType == 'PERSON' and e2.start < e1.start:
                 continue
+            if is_all_punct(e1.text) or is_all_punct(e2.text):
+                continue
 
             sample = Sample(sentence.text, e1, e2)
             if sample.key() in relation_dict:
@@ -215,7 +228,6 @@ def create_samples_from_sentences(sentences, max_distance=100,
     for sen in sentences:
         tmp_samples = create_samples_from_one_sentence(sen, max_distance=max_distance,
                                                        use_posi_sen_only=use_posi_sen_only,
-                                                       has_label=has_label,
                                                        is_train=is_train, keep_same_text=keep_same_text)
         samples.extend(tmp_samples)
     return samples
