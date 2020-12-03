@@ -199,12 +199,11 @@ class Trainer(object):
         for key in sorted(results.keys()):
             logger.info("  {} = {:.4f}".format(key, results[key]))
         
-        if self.args.print_report:
-            true_labels = [self.id2label[i] for i in out_label_ids]
-            predictions = [self.id2label[i] for i in preds]
-            text_labels = [self.id2label[lb] for lb in labels]
-            print("**** Classification Report ****")
-            print(metrics.classification_report(true_labels, predictions, labels=text_labels, digits=4))
+        true_labels = [self.id2label[i] for i in out_label_ids]
+        predictions = [self.id2label[i] for i in preds]
+        text_labels = [self.id2label[lb] for lb in labels]
+        print("**** Classification Report ****")
+        print(metrics.classification_report(true_labels, predictions, labels=text_labels, digits=4))
             
         return results
 
