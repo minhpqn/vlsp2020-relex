@@ -264,6 +264,13 @@ def train(args, model, tokenizer, id2label, train_dataset, validation_dataset):
                   f"Validation Micro F1: {micro_f1}\n",
                   file=fo,
                   )
+            
+        true_labels = [id2label[i] for i in flat_true_labels]
+        predictions = [id2label[i] for i in flat_predictions]
+        text_labels = [id2label[lb] for lb in labels]
+        print("**** Classification Report ****")
+        print(metrics.classification_report(true_labels, predictions, labels=text_labels))
+        
         print("Saving model checkpoint to %s" % output_dir)
 
 
