@@ -52,13 +52,14 @@ def show_stats_on_raw_data(input_dir):
 
 def show_stats_on_preprocessed_data(input_file, id2label):
     relation_types = []
+    total_samples = 0
     with open(input_file, 'r') as f:
         for line in f:
+            total_samples += 1
             fields = line.split("\t")
             lb = id2label[int(fields[0])]
-            if lb == 'OTHER':
-                continue
             relation_types.append(lb)
+    print("*** Number of samples: {}".format(total_samples))
     print("*** Relation type counts: {}".format(Counter(relation_types)))
     
 
@@ -95,13 +96,13 @@ if __name__ == "__main__":
         id2label = load_id2label(args.id2label)
     
     if args.train_file:
-        print("****** Data statstics for train ffile ******")
+        print("****** Data statstics for train file ******")
         print("Train file: {}".format(args.train_file))
         show_stats_on_preprocessed_data(args.train_file, id2label)
         print()
     
     if args.train_file:
-        print("****** Data statstics for dev ffile ******")
+        print("****** Data statstics for dev file ******")
         print("Dev file: {}".format(args.dev_file))
         show_stats_on_preprocessed_data(args.dev_file, id2label)
         print()

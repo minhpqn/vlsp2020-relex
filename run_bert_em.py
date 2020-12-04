@@ -1,36 +1,35 @@
 # coding=utf-8
 """
-Conduct experiments with R-BERT model
-We use the code base from: https://github.com/monologg/R-BERT
+BERT-EM + Entity Start Model
 """
 import argparse
 
-from rbert.data_loader import load_and_cache_examples
-from rbert.trainer import Trainer
-from rbert.utils import init_logger, load_tokenizer, set_seed
+from bert_em.data_loader import load_and_cache_examples
+from bert_em.trainer_es import Trainer
+from bert_em.utils import init_logger, load_tokenizer, set_seed
 
 
 def main(args):
     init_logger()
     set_seed(args)
     tokenizer = load_tokenizer(args)
-
-    train_dataset = load_and_cache_examples(args, tokenizer, mode="train")
-    test_dataset = load_and_cache_examples(args, tokenizer, mode="test")
-
+    
+    train_dataset = load_and_cache_examples(args, args.train_data_file, tokenizer)
+    test_dataset = load_and_cache_examples(args, args.eval_data_file, tokenizer)
+    
     trainer = Trainer(args, tokenizer, train_dataset=train_dataset, test_dataset=test_dataset)
-
+    
     if args.do_train:
         trainer.train()
-
+    
     if args.do_eval:
         trainer.load_model()
         trainer.evaluate()
-        
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-
+    
     parser.add_argument("--train_data_file", type=str, required=True,
                         help="The input training data file (a text file).")
     # Other parameters
@@ -43,7 +42,8 @@ if __name__ == "__main__":
         "--id2label", type=str, required=True,
         help="Path to id2label file"
     )
-    
+    parser.add_argument("--model_type", type=str, choices=["es", "all"],
+                        required=True, help="Model type (BertEntityStarts or BertConcatAll)")
     parser.add_argument("--model_dir", type=str, default="./models", help="Path to save model checkpoints")
     parser.add_argument(
         "--model_name_or_path",
@@ -115,7 +115,6 @@ if __name__ == "__main__":
         action="store_true",
         help="Add [SEP] token at the end of the sentence",
     )
-    
     args = parser.parse_args()
     
     main(args)

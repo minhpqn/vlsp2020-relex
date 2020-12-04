@@ -1,5 +1,4 @@
 import copy
-import csv
 import json
 import logging
 import os
@@ -206,12 +205,18 @@ def load_and_cache_examples(args, tokenizer, mode):
         input_file = args.eval_data_file
     else:
         raise ValueError("Invalid mode: {}".format(mode))
-    
-    # Load data features from cache or dataset file
-    cached_features_file = input_file + "-cached_{}_{}".format(
-                               list(filter(None, args.model_name_or_path.split("/"))).pop(),
-                               args.max_seq_len,
-                            )
+
+    if args.add_sep_token:
+        # Load data features from cache or dataset file
+        cached_features_file = input_file + "-rbert-add_sep_token-cached_{}_{}".format(
+                                   list(filter(None, args.model_name_or_path.split("/"))).pop(),
+                                   args.max_seq_len,
+                                )
+    else:
+        cached_features_file = input_file + "-rbert-cached_{}_{}".format(
+            list(filter(None, args.model_name_or_path.split("/"))).pop(),
+            args.max_seq_len,
+        )
     if os.path.exists(cached_features_file) and not args.overwrite_cache:
         logger.info("Loading features from cached file %s", cached_features_file)
         features = torch.load(cached_features_file)

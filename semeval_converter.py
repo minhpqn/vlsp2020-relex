@@ -27,10 +27,10 @@ if __name__ == "__main__":
     print(args)
     
     filename = None
-    match = re.search(r"VLSP2020_RE_(.+)/?$", args.input_dir)
+    match = re.search(r"VLSP2020_RE_(.+)/?$", args.input_dir.split("/").pop())
     if match:
         filename = match.group(1)
-        if filename == "training":
+        if re.search(r"train", filename):
             filename = "train"
     else:
         raise ValueError("Invalid input directory name: %s" % args.input_dir)
@@ -79,6 +79,9 @@ if __name__ == "__main__":
         print(f"{label2id[lb]}\t{sample.e1.start}\t{sample.e1.end}\t{sample.e2.start}\t"
               f"{sample.e2.end}\t{sample.e1.nerType}\t{sample.e2.nerType}\t{sample.tokenized_sentence}", file=f1)
         sen_with_marker = create_sequence_with_markers(sample)
+        dirname = ""
+        if sample.dirname is not None:
+            dirname = sample.dirname
         print(f"{lb}\t{sample.e1.start}\t{sample.e1.end}\t{sample.e2.start}\t"
-              f"{sample.e2.end}\t{sample.e1.nerType}\t{sample.e2.nerType}\t{sample.e1.text}\t{sample.e2.text}\t{sen_with_marker}", file=f2)
+              f"{sample.e2.end}\t{sample.e1.nerType}\t{sample.e2.nerType}\t{sample.e1.text}\t{sample.e2.text}\t{dirname}\t{sen_with_marker}", file=f2)
     f1.close()

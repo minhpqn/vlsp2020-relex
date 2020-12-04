@@ -1,0 +1,21 @@
+#!/bin/sh
+
+
+ORIGINAL_TRAIN_DEV_DIR=./data/original_train_dev
+NEW_TRAIN_DEV_DIR=./data/new_train_dev
+ORIGINAL_TRAIN_DEV_ID="16vVAB89rnequkZ8sPDoUlCHhcgZel6G9"
+ORIGINAL_TRAIN_DEV_FILE="$ORIGINAL_TRAIN_DEV_DIR/VLSP2020_RE_SemEvalFormat.zip"
+
+NEW_TRAIN_DEV_ID="14m5Uslg8HZ_if2_S6tB7rs9JgQ8rWDfR"
+NEW_TRAIN_DEV_FILE="$NEW_TRAIN_DEV_DIR/VLSP2020_RE_SemEvalFormat.zip"
+
+
+rm -f $ORIGINAL_TRAIN_DEV_FILE
+rm -f $NEW_TRAIN_DEV_FILE
+rm -rf $ORIGINAL_TRAIN_DEV_DIR/VLSP2020_RE_SemEvalFormat
+rm -rf $NEW_TRAIN_DEV_DIR/VLSP2020_RE_SemEvalFormat
+mkdir -p $ORIGINAL_TRAIN_DEV_DIR
+mkdir -p $NEW_TRAIN_DEV_DIR
+
+python download_ggdriver.py --unzip $ORIGINAL_TRAIN_DEV_ID $ORIGINAL_TRAIN_DEV_FILE
+python download_ggdriver.py --unzip $NEW_TRAIN_DEV_ID $NEW_TRAIN_DEV_FILE

@@ -12,7 +12,11 @@ import numpy as np
 def is_all_punct(text):
     """Check if a text contains only punctuations
     """
-    filters = frozenset([c for c in '!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\t\n '])
+    filters = [c for c in '“!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\t\n\'’']
+    filters.append(" ")
+    filters.append(" ")
+    filters = frozenset(filters)
+    
     b = False
     _tk = [c for c in text if c not in filters]
     if len(_tk) == 0:
@@ -115,11 +119,12 @@ class Sentence:
 class Sample:
     
     def __init__(self, tokenized_sentence, e1, e2,
-                 label='OTHER'):
+                 label='OTHER', dirname=None):
         self.tokenized_sentence = tokenized_sentence
         self.e1 = e1
         self.e2 = e2
         self.label = label
+        self.dirname = dirname
     
     def key(self):
         return self.e1.start, self.e1.end, self.e2.start, self.e2.end
@@ -199,7 +204,7 @@ def create_samples_from_one_sentence(sentence, max_distance=100,
             if is_all_punct(e1.text) or is_all_punct(e2.text):
                 continue
 
-            sample = Sample(sentence.text, e1, e2)
+            sample = Sample(sentence.text, e1, e2, dirname=sentence.dirname)
             if sample.key() in relation_dict:
                 label = relation_dict[sample.key()]
                 sample.label = label
