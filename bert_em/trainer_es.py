@@ -228,6 +228,10 @@ class Trainer(object):
             raise Exception("Model doesn't exists! Train first!")
         
         self.args = torch.load(os.path.join(self.args.model_dir, "training_args.bin"))
-        self.model = BertForSequenceClassification.from_pretrained(self.args.model_dir)
+        if self.args.model_type == "es":
+            self.model = BertEntityStarts.from_pretrained(self.args.model_dir, config=self.config)
+        elif self.args.model_type == "all":
+            self.model = BertConcatAll.from_pretrained(self.args.model_dir, config=self.config)
+            
         self.model.to(self.device)
         logger.info("***** Model Loaded *****")
