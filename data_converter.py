@@ -553,7 +553,7 @@ def main(args):
     os.makedirs(args.cache_dir, exist_ok=True)
     
     subdirs = [d for d in os.listdir(args.input_dir) if os.path.isdir(os.path.join(args.input_dir, d))
-               and re.search(r"\.conll", d)]
+               and re.search(r"\.(conll|txt)", d)]
     print("Number of sub-directories: {}".format(len(subdirs)))
     
     for subdir in subdirs:
