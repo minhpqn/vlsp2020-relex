@@ -78,17 +78,17 @@ def load_relex_samples_for_test(file_path, do_lower_case=False):
     """
     samples = []
     labels = []
-    default_label = "OTHER"
+    default_label = 2
     with open(file_path, "r") as fi:
         for line in fi:
             line = line.strip()
             if line == "":
                 continue
             fields = line.split("\t")
-            e1_start = fields[3]
-            e1_end = fields[4]
-            e2_start = fields[5]
-            e2_end = fields[6]
+            e1_start = int(fields[3])
+            e1_end = int(fields[4])
+            e2_start = int(fields[5])
+            e2_end = int(fields[6])
             e1_type = fields[7]
             e2_type = fields[8]
             sentence = fields[9]
