@@ -15,8 +15,8 @@ def main(args):
     set_seed(args)
     tokenizer = load_tokenizer(args)
 
-    train_dataset = load_and_cache_examples(args, tokenizer, mode="train")
-    test_dataset = load_and_cache_examples(args, tokenizer, mode="test")
+    train_dataset = load_and_cache_examples(args, args.train_data_file, tokenizer)
+    test_dataset = load_and_cache_examples(args, args.eval_data_file, tokenizer)
 
     trainer = Trainer(args, tokenizer, train_dataset=train_dataset, test_dataset=test_dataset)
 

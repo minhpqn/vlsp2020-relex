@@ -10,7 +10,7 @@ import os
 import torch
 from torch.utils.data import TensorDataset
 
-from relex.datautils import load_relex_samples
+from relex.datautils import load_relex_samples, load_relex_samples_for_test
 from rbert.data_loader import create_examples_from_relex_samples
 
 
@@ -149,7 +149,7 @@ def convert_examples_to_features(
     return features
 
 
-def load_and_cache_examples(args, input_file, tokenizer):
+def load_and_cache_examples(args, input_file, tokenizer, for_test=False):
     # Load data features from cache or dataset file
     if args.add_sep_token:
         cached_features_file = input_file + "-bert_em-add_sep_token-cached_{}_{}".format(
@@ -166,8 +166,10 @@ def load_and_cache_examples(args, input_file, tokenizer):
         features = torch.load(cached_features_file)
     else:
         logger.info("Creating features from dataset file at %s", input_file)
-        
-        samples, labels = load_relex_samples(input_file)
+        if for_test:
+            samples, labels = load_relex_samples_for_test(input_file)
+        else:
+            samples, labels = load_relex_samples(input_file)
         examples = create_examples_from_relex_samples(samples, labels)
         
         features = convert_examples_to_features(

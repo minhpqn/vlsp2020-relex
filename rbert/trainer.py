@@ -5,7 +5,7 @@ import numpy as np
 from sklearn import metrics
 import torch
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
-from tqdm import tqdm, trange
+from tqdm.auto import tqdm, trange
 from transformers import AdamW, BertConfig, get_linear_schedule_with_warmup
 
 from rbert.model import RBERT

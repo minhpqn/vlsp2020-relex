@@ -6,7 +6,7 @@ import os
 import torch
 from torch.utils.data import TensorDataset
 
-from relex.datautils import load_relex_samples, create_sequence_with_markers
+from relex.datautils import load_relex_samples, load_relex_samples_for_test, create_sequence_with_markers
 from rbert.utils import ADDITIONAL_SPECIAL_TOKENS
 
 
@@ -198,14 +198,7 @@ def create_examples_from_relex_samples(samples, labels):
     return examples
 
 
-def load_and_cache_examples(args, tokenizer, mode):
-    if mode == "train":
-        input_file = args.train_data_file
-    elif mode in ["dev", "test"]:
-        input_file = args.eval_data_file
-    else:
-        raise ValueError("Invalid mode: {}".format(mode))
-
+def load_and_cache_examples(args, input_file, tokenizer, for_test=False):
     if args.add_sep_token:
         # Load data features from cache or dataset file
         cached_features_file = input_file + "-rbert-add_sep_token-cached_{}_{}".format(
@@ -223,7 +216,10 @@ def load_and_cache_examples(args, tokenizer, mode):
     else:
         logger.info("Creating features from dataset file at %s", input_file)
         
-        samples, labels = load_relex_samples(input_file)
+        if for_test:
+            samples, labels = load_relex_samples_for_test(input_file)
+        else:
+            samples, labels = load_relex_samples(input_file)
         examples = create_examples_from_relex_samples(samples, labels)
         
         features = convert_examples_to_features(

@@ -52,7 +52,7 @@ def create_sequence_with_markers(sample, e1_start_token='[E1]', e1_end_token='[/
 
 
 def load_relex_samples(file_path, do_lower_case=False):
-    """Loading list of RelexSamples from data in SemEval 2010 format
+    """Loading list of RelexSample from data in SemEval 2010 format
     """
     samples = []
     labels = []
@@ -72,6 +72,33 @@ def load_relex_samples(file_path, do_lower_case=False):
             labels.append(lb)
     return samples, labels
 
+
+def load_relex_samples_for_test(file_path, do_lower_case=False):
+    """Loading list of RelexSample from a datafile of SemEval 2010 format (test data)
+    """
+    samples = []
+    labels = []
+    default_label = "OTHER"
+    with open(file_path, "r") as fi:
+        for line in fi:
+            line = line.strip()
+            if line == "":
+                continue
+            fields = line.split("\t")
+            e1_start = fields[3]
+            e1_end = fields[4]
+            e2_start = fields[5]
+            e2_end = fields[6]
+            e1_type = fields[7]
+            e2_type = fields[8]
+            sentence = fields[9]
+            if do_lower_case:
+                sentence = sentence.lower()
+            sample = RelexSample(sentence, e1_start, e1_end, e2_start, e2_end, e1_type, e2_type)
+            samples.append(sample)
+            labels.append(default_label)
+    return samples, labels
+    
 
 def load_id2label(file_path):
     """Load id2label from file id2label.txt
