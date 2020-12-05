@@ -108,7 +108,7 @@ if __name__ == "__main__":
     if args.model_type == "rbert":
         model = RBERT.from_pretrained(args.model_dir, args=train_args)
     elif args.model_type == "bert_em_cls":
-        model = BertForSequenceClassification(args.model_dir)
+        model = BertForSequenceClassification.from_pretrained(args.model_dir, config=config)
     elif args.model_type == "bert_em_es":
         model = BertEntityStarts.from_pretrained(args.model_dir, config=config)
     else:
@@ -129,12 +129,12 @@ if __name__ == "__main__":
     with open(args.input_file, 'r') as fi:
         for line in fi:
             line = line.strip()
-            if line == "r":
+            if line == "":
                 continue
             original_lines.append(line)
     assert len(predictions) == len(original_lines), "Number of lines and predictions mismatched"
     
     with open(args.output_file, "w") as fo:
-        for pred, line in zip(predictions, line):
+        for pred, line in zip(predictions, original_lines):
             print("{}\t{}".format(pred, line), file=fo)
 
