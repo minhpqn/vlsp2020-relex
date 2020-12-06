@@ -107,11 +107,11 @@ if __name__ == "__main__":
     models = [
         {
             "model_type": "rbert",
-            "model_dir": "./models/original_train_dev/rbert_bert4news_maxlen_384_epochs_10"
+            "model_dir": "./models/all_data/rbert_bert4news_maxlen_384_epochs_10"
         },
         {
             "model_type": "bert_em_es",
-            "model_dir": "./models/original_train_dev/bert_em_es_bert4news_maxlen_384_epochs_10"
+            "model_dir": "./models/all_data/bert_em_es_bert4news_maxlen_384_epochs_10"
         },
     ]
     weights = [0.4, 0.6]
