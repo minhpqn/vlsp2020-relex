@@ -8,8 +8,9 @@ import argparse
 import logging
 import numpy as np
 import torch
+import torch.nn.functional as F
 from torch.utils.data import DataLoader, SequentialSampler
-from tqdm.auto import tqdm, trange
+from tqdm.auto import tqdm
 from transformers import BertForSequenceClassification, BertConfig
 import rbert
 import bert_em
@@ -31,6 +32,7 @@ def predict(train_args, args, model, test_dataset, id2label, return_proba=False)
     logger.info("  Batch size = %d", train_args.eval_batch_size)
 
     preds = None
+    probas = None
     for batch in tqdm(eval_dataloader, desc="Evaluating"):
         batch = tuple(t.to(args.device) for t in batch)
         with torch.no_grad():
@@ -62,15 +64,21 @@ def predict(train_args, args, model, test_dataset, id2label, return_proba=False)
             outputs = model(**inputs)
             logits = outputs[0]
 
+        proba = F.softmax(logits, dim=1)
         if preds is None:
             preds = logits.detach().cpu().numpy()
+            probas = proba.detach().cpu().numpy()
         else:
             preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
+            probas = np.append(probas, proba.detach().cpu().numpy(), axis=0)
 
     preds = np.argmax(preds, axis=1)
     preds = [id2label[i] for i in preds]
     
-    return preds
+    if return_proba:
+        return preds, probas
+    else:
+        return preds
     
 
 if __name__ == "__main__":
@@ -81,7 +89,7 @@ if __name__ == "__main__":
     parser.add_argument("--model_dir", type=str, required=True, help="Path to model directory")
     parser.add_argument("--input_file", type=str, required=True, help="Path to input file")
     parser.add_argument("--output_file", type=str, required=True, help="Path to output file (to store predicted labels)")
-    parser.add_argument("--eval_batch_size", type=int, default=16, help="Batch size for evaluation.")
+    parser.add_argument("--eval_batch_size", type=int, default=32, help="Batch size for evaluation.")
     parser.add_argument("--no_cuda", action="store_true", help="Whether to use GPU for evaluation.")
     parser.add_argument("--overwrite_cache", action="store_true", help="Whether to overwrite cached feature file.")
     args = parser.parse_args()
