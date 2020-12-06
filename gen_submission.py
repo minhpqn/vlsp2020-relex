@@ -133,6 +133,10 @@ if __name__ == "__main__":
                     print(line, file=fo)
                     continue
                 fields = line.split("\t")
+                if len(fields) == 3:
+                    # Process data unlabeled data file
+                    fields.append("_")
+                    fields.append("_")
                 assert len(fields) >= 5, "{}\t{}".format(input_file, line)
                 fields = fields[:5]
                 token_index = fields[0]
