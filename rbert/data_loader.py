@@ -2,7 +2,7 @@ import copy
 import json
 import logging
 import os
-
+import numpy as np
 import torch
 from torch.utils.data import TensorDataset
 
@@ -91,13 +91,34 @@ def convert_examples_to_features(
     for (ex_index, example) in enumerate(examples):
         if ex_index % 5000 == 0:
             logger.info("Writing example %d of %d" % (ex_index, len(examples)))
-        
+
+        # Account for [CLS] and [SEP] with "- 2" and with "- 3" for RoBERTa.
+        if add_sep_token:
+            special_tokens_count = 2
+        else:
+            special_tokens_count = 1
+            
         tokens_a = tokenizer.tokenize(example.text_a)
         
         e11_p = tokens_a.index("[E1]")  # the start position of entity1
         e12_p = tokens_a.index("[/E1]")  # the end position of entity1
         e21_p = tokens_a.index("[E2]")  # the start position of entity2
         e22_p = tokens_a.index("[/E2]")  # the end position of entity2
+
+        if e12_p + 1 > max_seq_len or e22_p + 1 > max_seq_len:
+            min_p = min(e11_p, e12_p, e21_p, e22_p)
+            max_p = max(e11_p, e12_p, e21_p, e22_p)
+            dist = max_p - min_p + 1
+            window_size = int((max_seq_len - special_tokens_count - dist)/2)
+            tokens_a = tokens_a[min_p-window_size+1:max_p+window_size]
+            print("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".format(e11_p,e12_p,e21_p,e22_p,min_p,max_p, window_size, example.text_a))
+            print("{}\t{}".format(len(tokens_a)," ".join(tokens_a)))
+            print()
+
+            e11_p = tokens_a.index("[E1]")
+            e12_p = tokens_a.index("[/E1]")
+            e21_p = tokens_a.index("[E2]")
+            e22_p = tokens_a.index("[/E2]")
         
         # Replace the token
         tokens_a[e11_p] = "$"
@@ -111,11 +132,6 @@ def convert_examples_to_features(
         e21_p += 1
         e22_p += 1
         
-        # Account for [CLS] and [SEP] with "- 2" and with "- 3" for RoBERTa.
-        if add_sep_token:
-            special_tokens_count = 2
-        else:
-            special_tokens_count = 1
         if len(tokens_a) > max_seq_len - special_tokens_count:
             tokens_a = tokens_a[: (max_seq_len - special_tokens_count)]
         
@@ -144,8 +160,10 @@ def convert_examples_to_features(
         e2_mask = [0] * len(attention_mask)
         
         for i in range(e11_p, e12_p + 1):
+            assert i >= 0 and i < len(e1_mask), "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".format(e11_p, e12_p, e21_p, e22_p, len(e1_mask), len(input_ids), max_seq_len, len(example.text_a.split()), example.text_a)
             e1_mask[i] = 1
         for i in range(e21_p, e22_p + 1):
+            assert i >= 0 and i < len(e2_mask), "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".format(e11_p, e12_p, e21_p, e22_p, len(e2_mask), len(input_ids), max_seq_len, len(example.text_a.split()), example.text_a)
             e2_mask[i] = 1
         
         assert len(input_ids) == max_seq_len, "Error with input length {} vs {}".format(len(input_ids), max_seq_len)
