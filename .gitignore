@@ -1,3 +1,5 @@
+.DS_Store
+__pycache__
 log*.txt
 tmp*
 preprocessed_data
@@ -13,3 +15,5 @@ output
 working
 RELEX2020_Submissions
 results
+.vscode
+*~

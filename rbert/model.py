@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
 from transformers import BertModel, BertPreTrainedModel
+from pyvi import ViTokenizer
 
+ViTokenizer.tokenize()
 
 class FCLayer(nn.Module):
     def __init__(self, input_dim, output_dim, dropout_rate=0.0, use_activation=True):
