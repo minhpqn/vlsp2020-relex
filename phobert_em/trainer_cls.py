@@ -7,14 +7,15 @@ from relex.datautils import load_id2label
 from sklearn import metrics
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from tqdm import tqdm, trange
-from transformers import AdamW, BertConfig, get_linear_schedule_with_warmup
-
-from bert_em.model import BertConcatAll, BertEntityStarts
+from transformers import (AdamW, RobertaConfig,
+                          RobertaForSequenceClassification,
+                          get_linear_schedule_with_warmup)
 
 logger = logging.getLogger(__name__)
 
 
 class Trainer(object):
+
     def __init__(self, args, tokenizer, train_dataset=None, dev_dataset=None, test_dataset=None):
         self.args = args
         self.tokenizer = tokenizer
@@ -25,22 +26,19 @@ class Trainer(object):
         self.id2label = load_id2label(args.id2label)
         self.num_labels = len(self.id2label)
         
-        self.config = BertConfig.from_pretrained(
+        self.config = RobertaConfig.from_pretrained(
             args.model_name_or_path,
             num_labels=self.num_labels,
             finetuning_task="VLSP2020-Relex",
             id2label={str(i): label for i, label in self.id2label.items()},
             label2id={label: i for i, label in self.id2label.items()},
         )
-        if self.args.model_type == "es":
-            self.model = BertEntityStarts.from_pretrained(args.model_name_or_path, config=self.config)
-        elif self.args.model_type == "all":
-            self.model = BertConcatAll.from_pretrained(args.model_name_or_path, config=self.config)
+        self.model = RobertaForSequenceClassification.from_pretrained(args.model_name_or_path, config=self.config)
         
         # GPU or CPU
         self.device = "cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu"
         self.model.to(self.device)
-    
+
     def train(self):
         train_sampler = RandomSampler(self.train_dataset)
         train_dataloader = DataLoader(
@@ -106,8 +104,6 @@ class Trainer(object):
                     "attention_mask": batch[1],
                     "token_type_ids": batch[2],
                     "labels": batch[3],
-                    "e1_ids": batch[4],
-                    "e2_ids": batch[5],
                 }
                 outputs = self.model(**inputs)
                 loss = outputs[0]
@@ -168,8 +164,6 @@ class Trainer(object):
                     "attention_mask": batch[1],
                     "token_type_ids": batch[2],
                     "labels": batch[3],
-                    "e1_ids": batch[4],
-                    "e2_ids": batch[5],
                 }
                 outputs = self.model(**inputs)
                 tmp_eval_loss, logits = outputs[:2]
@@ -227,10 +221,6 @@ class Trainer(object):
             raise Exception("Model doesn't exists! Train first!")
         
         self.args = torch.load(os.path.join(self.args.model_dir, "training_args.bin"))
-        if self.args.model_type == "es":
-            self.model = BertEntityStarts.from_pretrained(self.args.model_dir, config=self.config)
-        elif self.args.model_type == "all":
-            self.model = BertConcatAll.from_pretrained(self.args.model_dir, config=self.config)
-            
+        self.model = RobertaForSequenceClassification.from_pretrained(self.args.model_dir)
         self.model.to(self.device)
         logger.info("***** Model Loaded *****")

@@ -2,13 +2,11 @@
 """
 import argparse
 import os
-import unittest
 
 import numpy as np
 from pyvi import ViTokenizer
 
-# from vncorenlp import VnCoreNLP
-# annotator = VnCoreNLP(address="http://127.0.0.1", port=12000)
+from relex.datautils import load_id2label
 
 
 class Syllable(object):
@@ -121,45 +119,24 @@ def create_sequence_with_markers(tokens, e1_start, e1_end, e2_start, e2_end,
 
 def merge_entities(e1_tok_start, e1_tok_end, e2_tok_start, e2_tok_end):
     if e1_tok_end == e2_tok_start:
-      e1_tok_end += 1
+        e1_tok_end += 1
     else:
-      e1_tok_end += (e2_tok_start - e1_tok_end)
+        e1_tok_end += (e2_tok_start - e1_tok_end)
       
 
-def convert_to_phobert(line):
+def convert_to_phobert(line, id2label):
     lb, e1_start, e1_end, e2_start, e2_end, e1_type, e2_type, text = line.split("\t")
     e1_start = int(e1_start)
     e1_end = int(e1_end)
     e2_start = int(e2_start)
     e2_end = int(e2_end)
-    # annotated_data = annotator.annotate(text)
-    syllables = text.split(" ")
-    print("Input:", e1_start, e1_end, e2_start, e2_end, text)
-    # new_syllables = []
-    # i = 0
-    # while i < len(syllables):
-    #     if i == e1_start:
-    #         tmpsyl = "_".join(syllables[i:e1_end+1])
-    #         new_syllables.append(tmpsyl)
-    #         i = e1_end + 1
-    #     elif i == e2_start:
-    #         tmpsyl = "_".join(syllables[i:e2_end+1])
-    #         print(tmpsyl)
-    #         new_syllables.append(tmpsyl)
-    #         i = e2_end + 1
-    #     else:
-    #         new_syllables.append(syllables[i])
-    #         i += 1
-
-    # text = " ".join(new_syllables)
-    # print(text)
+    
+    # Remove comments to debug
+    # print("Input:", e1_start, e1_end, e2_start, e2_end, text)
 
     tokenized_text = ViTokenizer.tokenize(text, sylabelize=False)
     tokenized_text = ViTokenizer.tokenize(text, sylabelize=False)
-    # assert len(annotated_data["sentences"]) == 1
-    # sen = Sentence.from_vncorenlp_sentence(annotated_data["sentences"][0])
     sen = Sentence.from_pyvi_sentence(tokenized_text)
-    # fixed_tokenized_text = sen.get_fixed_tokenized_text(e1_start, e1_end, e2_start, e2_end)
 
     e1_tok_start = sen.syllables[e1_start].token_index
     e1_tok_end = sen.syllables[e1_end].token_index
@@ -173,57 +150,39 @@ def convert_to_phobert(line):
 
     words = new_text.split(" ")
     text_with_markers = create_sequence_with_markers(words, e1_tok_start, e1_tok_end, e2_tok_start, e2_tok_end)
-    orig_text_with_markers = create_sequence_with_markers(text.split(" "), e1_start, e1_end, e2_start, e2_end)
     new_line = "\t".join([lb, str(e1_tok_start), str(e1_tok_end), 
                           str(e2_tok_start), str(e2_tok_end), e1_type, e2_type, new_text])
     
-    print(e1_tok_start, e1_tok_end, e2_tok_start, e2_tok_end)
+    # print(e1_tok_start, e1_tok_end, e2_tok_start, e2_tok_end)
     
     if(e1_tok_start == e2_tok_start and e1_tok_end == e2_tok_end):
-      None
+        pass
+
     if(e1_tok_start == e2_tok_start and e1_tok_end < e2_tok_end):
-      # temp
-      None
+        pass
 
     if(e1_tok_end == e2_tok_start and e1_tok_start < e2_tok_start):
-      e1_tok_end = e1_tok_end - 1
+        e1_tok_end = e1_tok_end - 1
 
     if (e1_tok_end == e2_tok_end):
-      if(e1_start < e2_start):
-        e1_tok_end = e1_tok_end - 1
-      else:
-        e2_tok_end = e2_tok_end - 1
-    if(e2_tok_end == e1_tok_start and e1_tok_start == e2_tok_end): #  Mr.Siro
-      e1_tok_start = e1_tok_start
-      e1_tok_end = e1_tok_end
+        if(e1_start < e2_start):
+            e1_tok_end = e1_tok_end - 1
+        else:
+            e2_tok_end = e2_tok_end - 1
 
-    print(e1_tok_start, e1_tok_end, e2_tok_start, e2_tok_end) 
-    
-    # assert e1_tok_start != e2_tok_start, f"{line}\t{text_with_markers}\t{e1_tok_start}\t{e2_tok_start}"
-    # assert e1_tok_end != e2_tok_end, f"{line}\t{text_with_markers}\t{e1_tok_start}\t{e1_tok_end}\t{e2_tok_start}\t{e2_tok_end}"
+    # print(e1_tok_start, e1_tok_end, e2_tok_start, e2_tok_end) 
 
-    # if e1_tok_start < e2_tok_start:
-    #     assert e1_tok_end < e2_tok_start, f"{orig_text_with_markers}\t{text_with_markers}\t{e1_tok_start}\t{e1_tok_end}\t{e2_tok_start}\t{e2_tok_end}"
-    # else:
-        # assert e2_tok_end < e1_tok_start, f"{orig_text_with_markers}\t{text_with_markers}\t{e1_tok_start}\t{e1_tok_end}\t{e2_tok_start}\t{e2_tok_end}"
-    
     e1_text = " ".join(words[e1_tok_start:e1_tok_end+1])
     e2_text = " ".join(words[e2_tok_start:e2_tok_end+1])
-    # print(f"'{e1_text}'")
-    # print(f"'{e2_text}'")
-    
 
-    line_with_markers = "\t".join([lb, str(e1_tok_start), str(e1_tok_end), 
-                                   str(e2_tok_start), str(e2_tok_end), e1_type, e2_type, e1_text, e2_text])
-    line_with_markers = "\t".join([lb, str(e1_tok_start), str(e1_tok_end), str(e2_tok_start), str(e2_tok_end), e1_type, e2_type, e1_text, e2_text, text_with_markers])
-    
-    # print(line_with_markers)
+    line_with_markers = "\t".join([id2label[int(lb)], str(e1_tok_start), str(e1_tok_end), str(e2_tok_start), str(e2_tok_end), e1_type, e2_type, e1_text, e2_text, text_with_markers])
     new_line = "\t".join([lb, str(e1_tok_start), str(e1_tok_end), 
                           str(e2_tok_start), str(e2_tok_end), e1_type, e2_type, new_text])
     return new_line, line_with_markers
 
 
 def main(args):
+    id2label = load_id2label(args.id2label)
     basename = os.path.splitext(args.input_file)[0]
     output_file = os.path.join(basename + "-phobert.txt")
     output_file_readble = os.path.join(basename + "-phobert-readable.txt")
@@ -234,7 +193,7 @@ def main(args):
             line = line.strip()
             if line == "":
                 continue
-            phobert_line, line_with_markers = convert_to_phobert(line)
+            phobert_line, line_with_markers = convert_to_phobert(line, id2label)
             print(phobert_line, file=fo)
             print(line_with_markers, file=fo_readble)
     fo.close()
@@ -245,7 +204,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--input_file", type=str, required=True,
                         help="Path to input data file (txt)")
-    # parser.add_argument("--id2label", type=str, required=True, help="Path to id2label file")
+    parser.add_argument("--id2label", type=str, required=True, help="Path to id2label file")
     args = parser.parse_args()
     main(args)
 

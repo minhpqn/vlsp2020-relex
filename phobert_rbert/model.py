@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from transformers import BertModel, BertPreTrainedModel
+from transformers import BertPreTrainedModel, RobertaConfig, RobertaModel
 
 
 class FCLayer(nn.Module):
@@ -19,9 +19,13 @@ class FCLayer(nn.Module):
 
 
 class RBERT(BertPreTrainedModel):
+    
+    config_class = RobertaConfig
+    base_model_prefix = "roberta"
+
     def __init__(self, config, args):
-        super(RBERT, self).__init__(config)
-        self.bert = BertModel(config=config)  # Load pretrained bert
+        super().__init__(config)
+        self.roberta = RobertaModel(config=config)  # Load pretrained bert
 
         self.num_labels = config.num_labels
 
@@ -52,7 +56,7 @@ class RBERT(BertPreTrainedModel):
         return avg_vector
 
     def forward(self, input_ids, attention_mask, token_type_ids, labels, e1_mask, e2_mask):
-        outputs = self.bert(
+        outputs = self.roberta(
             input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids
         )  # sequence_output, pooled_output, (hidden_states), (attentions)
         sequence_output = outputs[0]

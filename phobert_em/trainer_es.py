@@ -7,9 +7,9 @@ from relex.datautils import load_id2label
 from sklearn import metrics
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from tqdm import tqdm, trange
-from transformers import AdamW, BertConfig, get_linear_schedule_with_warmup
+from transformers import AdamW, RobertaConfig, get_linear_schedule_with_warmup
 
-from bert_em.model import BertConcatAll, BertEntityStarts
+from phobert_em.model import RobertaConcatAll, RobertaEntityStarts
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ class Trainer(object):
         self.id2label = load_id2label(args.id2label)
         self.num_labels = len(self.id2label)
         
-        self.config = BertConfig.from_pretrained(
+        self.config = RobertaConfig.from_pretrained(
             args.model_name_or_path,
             num_labels=self.num_labels,
             finetuning_task="VLSP2020-Relex",
@@ -33,12 +33,12 @@ class Trainer(object):
             label2id={label: i for i, label in self.id2label.items()},
         )
         if self.args.model_type == "es":
-            self.model = BertEntityStarts.from_pretrained(args.model_name_or_path, config=self.config)
+            self.model = RobertaEntityStarts.from_pretrained(args.model_name_or_path, config=self.config)
         elif self.args.model_type == "all":
-            self.model = BertConcatAll.from_pretrained(args.model_name_or_path, config=self.config)
+            self.model = RobertaConcatAll.from_pretrained(args.model_name_or_path, config=self.config)
         
         # GPU or CPU
-        self.device = "cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu"
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model.to(self.device)
     
     def train(self):
@@ -228,9 +228,9 @@ class Trainer(object):
         
         self.args = torch.load(os.path.join(self.args.model_dir, "training_args.bin"))
         if self.args.model_type == "es":
-            self.model = BertEntityStarts.from_pretrained(self.args.model_dir, config=self.config)
+            self.model = RobertaEntityStarts.from_pretrained(self.args.model_dir, config=self.config)
         elif self.args.model_type == "all":
-            self.model = BertConcatAll.from_pretrained(self.args.model_dir, config=self.config)
+            self.model = RobertaConcatAll.from_pretrained(self.args.model_dir, config=self.config)
             
         self.model.to(self.device)
         logger.info("***** Model Loaded *****")

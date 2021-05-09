@@ -1,6 +1,6 @@
 # coding=utf-8
 """
-Data Loading function for BERT-EMB
+Data Loading function for Roberta-EM
 """
 import copy
 import json
@@ -53,10 +53,10 @@ def convert_examples_to_features(
         examples,
         max_seq_len,
         tokenizer,
-        cls_token="[CLS]",
+        cls_token="<s>",
         cls_token_segment_id=0,
-        sep_token="[SEP]",
-        pad_token=0,
+        sep_token="</s>",
+        pad_token=1,
         pad_token_segment_id=0,
         sequence_a_segment_id=0,
         add_sep_token=False,
@@ -67,7 +67,7 @@ def convert_examples_to_features(
         if ex_index % 5000 == 0:
             logger.info("Writing example %d of %d" % (ex_index, len(examples)))
 
-        # Account for [CLS] and [SEP] with "- 2" and with "- 3" for RoBERTa.
+        # Account for <s> and </s> with "- 2" and with "- 3" for RoBERTa.
         if add_sep_token:
             special_tokens_count = 2
         else:
@@ -101,7 +101,7 @@ def convert_examples_to_features(
         tokens_a[e21_p] = "#"
         tokens_a[e22_p] = "#"
         
-        # Add 1 because of the [CLS] token
+        # Add 1 because of the <s> token
         e11_p += 1
         e12_p += 1
         e21_p += 1
@@ -210,4 +210,3 @@ def load_and_cache_examples(args, input_file, tokenizer, for_test=False):
         all_e2_ids,
     )
     return dataset
-

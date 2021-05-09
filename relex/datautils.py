@@ -3,7 +3,6 @@
 Utility functions for data loading
 """
 import numpy as np
-import unittest
 
 
 class RelexSample:
@@ -112,28 +111,5 @@ def load_id2label(file_path):
             i, lb = line.split("\t")
             id2label[int(i)] = lb
     return id2label
-
-
-class TestDataUtils(unittest.TestCase):
-    
-    def test_create_sequence_with_marker(self):
-        sample = RelexSample("Tàu sân bay Mỹ tập trận với Nhật gần bán đảo Triều Tiên Tàu Ronald Reagan đang tập trận với các tàu chiến Nhật phía nam bán đảo Triều Tiên , hành động phô trương sức mạnh khi Bình Nhưỡng doạ thử hạt nhân .",
-                             9, 12, 3, 3)
-        print(create_sequence_with_markers(sample))
-        self.assertEqual("Tàu sân bay [E2] Mỹ [/E2] tập trận với Nhật gần [E1] bán đảo Triều Tiên [/E1] Tàu Ronald Reagan đang tập trận với các tàu chiến Nhật phía nam bán đảo Triều Tiên , hành động phô trương sức mạnh khi Bình Nhưỡng doạ thử hạt nhân .",
-                         create_sequence_with_markers(sample))
-
-        sample = RelexSample("Tàu sân bay Mỹ tập trận với Nhật gần bán đảo Triều Tiên Tàu Ronald Reagan đang tập trận với các tàu chiến Nhật phía nam bán đảo Triều Tiên , hành động phô trương sức mạnh khi Bình Nhưỡng doạ thử hạt nhân .",
-                              9, 12, 9, 10)
-        print(create_sequence_with_markers(sample))
-        
-        sample = RelexSample("Hạnh Chi ( T / h ) Theo Đời sống Plus / GĐVN", 0, 1, 12, 12)
-        print(create_sequence_with_markers(sample))
-
-        sample = RelexSample("Hạnh Chi ( T / h ) Theo Đời sống Plus / GĐVN", 11, 11, 12, 12)
-        print(create_sequence_with_markers(sample))
-
-        sample = RelexSample("Hạnh Chi ( T / h ) Theo Đời sống Plus / GĐVN", 12, 12, 11, 11)
-        print(create_sequence_with_markers(sample))
         
 
