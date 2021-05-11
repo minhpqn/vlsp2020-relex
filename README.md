@@ -21,6 +21,7 @@ We tested the code with:
 - Python 3.7.10
 - Pytorch 1.8.1
 - Hugging Face Transformers 4.6.0
+- googledrivedownloader (pip install googledrivedownloader).
 - Modified version of pyvi from the [forked repo](https://github.com/minhpqn/pyvi) for word segmentation with syllablized texts.
 
 ## Evaluation Results
