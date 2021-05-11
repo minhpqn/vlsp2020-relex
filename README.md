@@ -46,7 +46,7 @@ On the development set, ensemble model + PhoBERT obtained the best results among
 
 ## Data Preparation
 
-From the original Vietnamese relation extraction dataset provided by VLSP 2020 organizers, we converted to
+From the original Vietnamese relation extraction dataset provided by VLSP 2020 organizers, we converted it to
 SemEval format. In SemEval format, a file is a list of lines and each line is tab delimitted with following information.
 
     <label> <entity1_start_index> <entity1_end_index> <entity2_start_index> <entity2_end_index> <entity1_type>  <entity2_type> <tokenized_sentence>
@@ -85,7 +85,7 @@ Now, directory `./data/VLSP2020_RE_SemEvalFormat` contains necessary files for t
 4	PERSONAL - SOCIAL
 ```
 
-Transforming data into PhoBERT is a bit tricky because we need to fix entity boundary errors. You have to install pyvi package from [forked repo](https://github.com/minhpqn/pyvi) here. Then run the script `prepare_data4phobert.py` as follows.
+Transforming data into word-segmented data for PhoBERT experiments is a bit tricky because we need to fix entity boundary errors. You have to install pyvi package from [forked repo](https://github.com/minhpqn/pyvi) here. Then run the script `prepare_data4phobert.py` as follows.
 
 ```
 python prepare_data4phobert.py --input_file ./data/VLSP2020_RE_SemEvalFormat/dev.txt --id2label ./data/VLSP2020_RE_SemEvalFormat/id2label.txt
