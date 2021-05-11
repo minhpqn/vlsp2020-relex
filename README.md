@@ -144,7 +144,7 @@ python run_phobert_em.py --model_dir ./models/original_train_dev/phobert_em_es_b
 
 ### R-BERT
 
-With With `NlpHUST/vibert4news-base-cased` pre-trained model.
+With `NlpHUST/vibert4news-base-cased` pre-trained model.
 
 ```
 python run_rbert.py --model_dir ./models/original_train_dev/bert_em_es_bert4news_maxlen_384_epochs_10 \
