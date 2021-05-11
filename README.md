@@ -16,6 +16,13 @@ Details of the models and experimental results can be found in the following pap
 
 ## Requirements
 
+We tested the code with:
+
+- Python 3.7.10
+- Pytorch 1.8.1
+- Hugging Face Transformers 4.6.0
+- Modified version of pyvi from the [forked repo](https://github.com/minhpqn/pyvi) for word segmentation with syllablized texts.
+
 ## Evaluation Results
 
 **NOTE:** We added evaluation results with PhoBERT pre-trained model. These results were not reported in the paper. Experiments with PhoBERT is quite tricky because we need to fixed word segmentation errors in which an entity mention contains syllables of another words.
