@@ -2,7 +2,7 @@
 
 (C) Copyright by Pham Quang Nhat Minh
 
-Code the paper [An Empirical Study of Using Pre-trained BERT Models for Vietnamese Relation Extraction Task at VLSP 2020](https://arxiv.org/pdf/2012.10275.pdf), VLSP 2020. In the paper, we used BERT-based models for Vietnamese Relation Extraction. Our system ranked second in the VLSP 2020 shared task.
+Official code for the paper [An Empirical Study of Using Pre-trained BERT Models for Vietnamese Relation Extraction Task at VLSP 2020](https://arxiv.org/pdf/2012.10275.pdf), VLSP 2020. In the paper, we used BERT-based models for Vietnamese Relation Extraction. Our system ranked second in the VLSP 2020 shared task.
 
 Details of the models and experimental results can be found in the following paper.
 
@@ -186,7 +186,7 @@ python run_phobert_rbert.py --model_dir ./models/original_train_dev/phobert_rber
 
 With `NlpHUST/vibert4news-base-cased` pre-trained model.
 
-   python run_ensemble.py --input_file ./data/cached_features/dev.txt
+    python run_ensemble.py --input_file ./data/cached_features/dev.txt
 
 With `NlpHUST/vibert4news-base-cased` pre-trained model.
 
